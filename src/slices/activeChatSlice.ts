@@ -5,8 +5,12 @@ interface ActiveChatState {
   activeChat: ActiveChat;
 }
 
+const raw = typeof window !== 'undefined'
+  ? sessionStorage.getItem('activeChat')
+  : null;
+
 const initialState: ActiveChatState = {
-  activeChat: null,
+  activeChat: raw ? JSON.parse(raw) : null,
 }
 
 const activeChatSlice = createSlice({
@@ -15,9 +19,11 @@ const activeChatSlice = createSlice({
   reducers: {
     setActiveChat: (state, { payload }) => {
       state.activeChat = payload;
+      sessionStorage.setItem('activeChat', JSON.stringify(payload));
     },
     putAwayActiveChat: (state) => {
       state.activeChat = null;
+      sessionStorage.removeItem('activeChat');
     }
   }
 });

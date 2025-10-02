@@ -61,7 +61,7 @@ export async function init(options: {
 
   // Mount all components used in the project.
   mountBackButton.ifAvailable();
-  restoreInitData();
+  //restoreInitData();
   
   if (miniApp.mountSync.isAvailable()) {
     miniApp.mountSync();
