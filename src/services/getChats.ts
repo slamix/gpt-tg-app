@@ -1,0 +1,44 @@
+import axios from 'axios';
+import { Chat } from '@/slices/types/types';
+
+// Интерфейс ответа от API
+export interface GetChatsResponse {
+  items: Chat[];
+  limit: number;
+  offset: number;
+  count: number;
+}
+
+// Параметры запроса
+interface GetChatsParams {
+  offset?: number;
+  limit?: number;
+  token: string;
+}
+
+/**
+ * API функция для получения чатов с пагинацией
+ */
+export const fetchChats = async ({ offset = 0, limit = 50, token }: GetChatsParams): Promise<GetChatsResponse> => {
+  const response = await axios.get<GetChatsResponse>(`${import.meta.env.VITE_API_HOST}user/chats`, {
+    params: { limit, offset },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
+/**
+ * Утилита для получения всех чатов из страниц
+ */
+export const getAllChatsFromPages = (pages: GetChatsResponse[] | undefined): Chat[] => {
+  if (!pages) return [];
+  return pages.reduce((allChats: Chat[], page) => [...allChats, ...page.items], []);
+};
+
+/**
+ * Утилита для получения общего количества чатов
+ */
+export const getTotalChatsCount = (pages: GetChatsResponse[] | undefined): number => {
+  if (!pages || pages.length === 0) return 0;
+  return pages[0].count;
+};

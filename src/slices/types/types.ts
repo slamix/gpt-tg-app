@@ -4,12 +4,13 @@ export interface Message {
     id: number;
   },
   text: string;
-  timestamp: Date;
+  //timestamp: string; // Изменено с Date на string для сериализации
 };
 
 export interface Chat {
   id: number;
-  subject: string;
+  owner_id: number;
+  chat_subject: string;
 };
 
 export interface Message {
