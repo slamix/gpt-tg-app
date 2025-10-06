@@ -9,7 +9,8 @@ import { init } from "@/init";
 import { retrieveRawInitData } from "@telegram-apps/sdk";
 import { ModalRemove } from "@/components/modals/ModalRemove";
 import { ModalRename } from "@/components/modals/ModalRename";
-import LoadingPage from "@/components/loading-page/LoadingPage";
+import LoadingPage from "@/pages/LoadingPage";
+import ErrorPage from "@/pages/ErrorPage";
 
 const queryClient = new QueryClient();
 
@@ -17,7 +18,7 @@ export function App() {
   const dispatch = useDispatch();
   const { token, loading, error } = useSelector((state: RootState) => state.auth);
 
-    useEffect(() => {
+  useEffect(() => {
     const initializeApp = async () => {
       await init({
         debug: true,
@@ -38,7 +39,7 @@ export function App() {
   }, [token]);
 
   if (loading) return <LoadingPage />;
-  if (error) return <div>Ошибка: {error}</div>;
+  if (error) return <ErrorPage error={error} />;
 
   return (
     <QueryClientProvider client={queryClient}>

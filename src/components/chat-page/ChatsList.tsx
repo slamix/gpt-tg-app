@@ -34,7 +34,7 @@ interface ChatsListProps {
 
 export function ChatsList({ onMobileClose }: ChatsListProps) {
   const dispatch = useDispatch();
-  const activeChat = useSelector((state: RootState) => state.activeChat.activeChat);
+  const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
   const token = useSelector((state: RootState) => state.auth.token);
 
   const queryClient = useQueryClient();
@@ -72,7 +72,10 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const handleOpen = (method: string, chat: Chat) => {
-    dispatch(setOpen({ method, chat}));
+    // Закрываем меню
+    setMenuAnchor(null);
+    // Открываем модальное окно, передавая функцию закрытия сайдбара
+    dispatch(setOpen({ method, chat, onCloseSidebar: onMobileClose }));
   }
 
   // UI состояния загрузки и ошибки
@@ -98,7 +101,7 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
   }
 
   const handleGetMessages = async (chat: Chat) => {
-    dispatch(setActiveChat(chat));
+    dispatch(setActiveChat(chat.id));
     if (onMobileClose) {
       onMobileClose();
     }
@@ -115,14 +118,34 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
 
       {/* Список */}
       <Box sx={{ flex: 1, overflow: 'auto' }}>
-        <List sx={{ px: 1 }}>
-          {allChats.map((chat) => {
+        {allChats.length === 0 ? (
+          // Пустое состояние
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center', 
+            justifyContent: 'center',
+            height: '100%',
+            p: 4,
+            textAlign: 'center'
+          }}>
+            <ChatIcon sx={{ fontSize: 64, opacity: 0.3, mb: 2, color: 'text.secondary' }} />
+            <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
+              Чатов пока что нет
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1, opacity: 0.7 }}>
+            Создайте новый чат, чтобы начать общение.
+            </Typography>
+          </Box>
+        ) : (
+          <List sx={{ px: 1 }}>
+            {allChats.map((chat) => {
             const isMenuOpen = menuAnchor?.id === chat.id;
 
             return (
               <ListItem key={chat.id} disablePadding sx={{ mb: 0.5 }}>
                 <ListItemButton
-                  selected={activeChat?.id === chat.id}
+                  selected={activeChatId === chat.id}
                   onClick={() => handleGetMessages(chat)}
                   sx={{
                     borderRadius: 2,
@@ -139,7 +162,7 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
                     primary={chat.chat_subject}
                     primaryTypographyProps={{
                       fontSize: '0.875rem',
-                      fontWeight: activeChat?.id === chat.id ? 600 : 400,
+                      fontWeight: activeChatId === chat.id ? 600 : 400,
                       noWrap: true,
                     }}
                   />
@@ -186,13 +209,14 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
             );
           })}
 
-          <div ref={sentinelRef} style={{ height: 1 }} />
-          {isFetchingNextPage && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CircularProgress size={20} />
-            </Box>
-          )}
-        </List>
+            <div ref={sentinelRef} style={{ height: 1 }} />
+            {isFetchingNextPage && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress size={20} />
+              </Box>
+            )}
+          </List>
+        )}
       </Box>
     </>
   );

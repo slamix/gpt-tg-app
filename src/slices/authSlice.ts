@@ -1,23 +1,21 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { cloudStorage } from "@telegram-apps/sdk";
 import axios from "axios";
-import { AbortablePromise } from "@telegram-apps/sdk-react";
 
 export const TOKEN_KEY = "token";
 
 export type AuthState = {
-  token: AbortablePromise<string> | string |null;
+  token: string | null;
   loading: boolean;
   error: string | null;
 };
 
 const initialState: AuthState = {
-  token: cloudStorage.getItem.isAvailable() ? cloudStorage.getItem(TOKEN_KEY) : null,
+  token: cloudStorage.getItem.isAvailable() ? localStorage.getItem(TOKEN_KEY) : null,
   loading: false,
   error: null,
 };
 
-// thunk для авторизации
 export const authorize = createAsyncThunk<string, string, { rejectValue: string }>(
   "auth/authorize",
   async (initData, { rejectWithValue }) => {
@@ -58,7 +56,6 @@ const authSlice = createSlice({
       .addCase(authorize.fulfilled, (state, action) => {
         state.loading = false;
         state.token = action.payload;
-        console.log(state.token);
       })
       .addCase(authorize.rejected, (state, action) => {
         state.loading = false;

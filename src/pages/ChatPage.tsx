@@ -19,8 +19,8 @@ export function ChatPage() {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleScrollDirectionChange = (showTitle: boolean) => {
-    setShowChatTitle(showTitle);
+  const handleScrollDirectionChange = (isScrollingDown: boolean) => {
+    setShowChatTitle(!isScrollingDown);
   };
 
   return (
@@ -45,13 +45,19 @@ export function ChatPage() {
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            minWidth: 0, // Важно для корректного overflow
+            minWidth: 0,
             position: 'relative',
           }}
         >
-          <ChatHeader onMobileToggle={handleMobileToggle} showTitle={showChatTitle} />
-          {/* Окно чата теперь занимает всю оставшуюся область */}
+          {/* Плавающий хедер поверх контента */}
+          <ChatHeader 
+            onMobileToggle={handleMobileToggle} 
+            showChatTitle={showChatTitle}
+          />
+          
+          {/* Окно чата занимает всю область */}
           <ChatWindow onScrollDirectionChange={handleScrollDirectionChange} />
+          
           {/* Форма ввода зафиксирована внизу поверх чата */}
           <MessageInput />
         </Box>

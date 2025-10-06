@@ -1,16 +1,13 @@
 import { createSlice } from '@reduxjs/toolkit';
-import type { ActiveChat } from '@/slices/types/types';
 
 interface ActiveChatState {
-  activeChat: ActiveChat;
+  activeChatId: number | null;
+  isNewChat: boolean;
 }
 
-const raw = typeof window !== 'undefined'
-  ? sessionStorage.getItem('activeChat')
-  : null;
-
 const initialState: ActiveChatState = {
-  activeChat: raw ? JSON.parse(raw) : null,
+  activeChatId: sessionStorage.getItem('activeChatId') ? Number(sessionStorage.getItem('activeChatId')): null,
+  isNewChat: false,
 }
 
 const activeChatSlice = createSlice({
@@ -18,15 +15,25 @@ const activeChatSlice = createSlice({
   initialState,
   reducers: {
     setActiveChat: (state, { payload }) => {
-      state.activeChat = payload;
-      sessionStorage.setItem('activeChat', JSON.stringify(payload));
+      state.activeChatId = payload;
+      sessionStorage.setItem('activeChatId', payload);
+      state.isNewChat = false;
+      console.log(state.activeChatId);
+    },
+    setNewActiveChat: (state, { payload }) => {
+      state.activeChatId = payload;
+      sessionStorage.setItem('activeChatId', payload);
+      state.isNewChat = true;
+      console.log(payload);
     },
     putAwayActiveChat: (state) => {
-      state.activeChat = null;
+      state.activeChatId = null;
       sessionStorage.removeItem('activeChat');
+      state.isNewChat = false;
+      console.log(state.activeChatId);
     }
   }
 });
 
-export const { setActiveChat, putAwayActiveChat } = activeChatSlice.actions;
+export const { setActiveChat, putAwayActiveChat, setNewActiveChat } = activeChatSlice.actions;
 export default activeChatSlice.reducer;

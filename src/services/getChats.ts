@@ -31,8 +31,11 @@ export const fetchChats = async ({ offset = 0, limit = 50, token }: GetChatsPara
  * Утилита для получения всех чатов из страниц
  */
 export const getAllChatsFromPages = (pages: GetChatsResponse[] | undefined): Chat[] => {
-  if (!pages) return [];
-  return pages.reduce((allChats: Chat[], page) => [...allChats, ...page.items], []);
+  if (!pages || pages.length === 0) return [];
+  return pages.reduce((allChats: Chat[], page) => {
+    if (!page || !page.items) return allChats;
+    return [...allChats, ...page.items];
+  }, []);
 };
 
 /**
