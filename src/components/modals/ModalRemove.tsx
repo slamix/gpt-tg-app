@@ -19,8 +19,9 @@ export function ModalRemove() {
   const dispatch = useDispatch();
   const modalRemoveIsOpen = useSelector((state: RootState) => state.modals.removeModalIsOpen);
   const currentChat = useSelector((state: RootState) => state.modals.currentChat);
-  const activeChat = useSelector((state: RootState) => state.activeChat.activeChat);
+  const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
   const token = useSelector((state: RootState) => state.auth.token);
+  const onCloseSidebar = useSelector((state: RootState) => state.modals.onCloseSidebar);
 
   const removeChatMutation = useRemoveChat({ token: token as string });
 
@@ -34,12 +35,16 @@ export function ModalRemove() {
     try {
       await removeChatMutation.mutateAsync({ chatId: currentChat.id });
       
-      // Если удаляемый чат был активным, сбрасываем активный чат
-      if (activeChat?.id === currentChat.id) {
+      if (activeChatId === currentChat.id) {
         dispatch(setActiveChat(null));
       }
       
       handleClose();
+      
+      // Закрываем сайдбар после удаления
+      if (onCloseSidebar) {
+        onCloseSidebar();
+      }
     } catch (error) {
       console.error('Ошибка при удалении чата:', error);
     }

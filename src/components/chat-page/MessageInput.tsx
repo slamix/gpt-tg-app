@@ -20,7 +20,7 @@ import { RootState } from '@/slices';
 import { askChat } from '@/services/askChat';
 import { addMessage } from '@/slices/messagesSlice';
 import { useCreateChat } from '@/hooks/useCreateChat';
-import { setActiveChat } from '@/slices/activeChatSlice';
+import { setNewActiveChat } from '@/slices/activeChatSlice';
 
 interface FormData {
   message: string;
@@ -36,47 +36,43 @@ export function MessageInput() {
   // const [uploadProgress, setUploadProgress] = React.useState<{ [key: string]: number }>({});
   // const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
-  const activeChat = useSelector((state: RootState) => state.activeChat.activeChat);
+  const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
   const token = useSelector((state: RootState) => state.auth.token);
   
   const createChatMutation = useCreateChat({ token: token as string });
   
   const messageValue = watch('message', '');
 
-  const onSubmit = async (data: FormData) => {
-    console.log("submit called:", data, activeChat, token);
-    
+  const onSubmit = async (data: FormData) => {    
     const { message } = data;
     if (!message.trim()) return;
     
     setIsSending(true);
     
     try {
-      if (activeChat === null) {
-        console.log("Создание нового чата...");
-        const newChat = await createChatMutation.mutateAsync();
-        console.log("Новый чат создан:", newChat);
+      if (activeChatId === null) {
+        const res = await createChatMutation.mutateAsync();
+        dispatch(setNewActiveChat(res.id));
         
-        dispatch(setActiveChat(newChat));
-        
-        const responseData = await askChat({ 
-          chatId: newChat.id, 
+        const messageData = await askChat({ 
+          chatId: res.id, 
           text: message.trim(), 
           token: token as string 
         });
-        
+
         const sentMessage = {
-          id: responseData.id,
+          id: messageData.id,
           chat: {
-            id: newChat.id,
+            id: res.id,
           },
           text: message.trim(),
         }
         dispatch(addMessage(sentMessage));
+        
         reset();
       } else {
         const responseData = await askChat({ 
-          chatId: activeChat.id, 
+          chatId: activeChatId, 
           text: message.trim(), 
           token: token as string 
         });
@@ -84,7 +80,7 @@ export function MessageInput() {
         const sentMessage = {
           id: responseData.id,
           chat: {
-            id: activeChat.id,
+            id: activeChatId,
           },
           text: message.trim(),
         }

@@ -2,6 +2,7 @@ import { Box, Button } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { useDispatch } from 'react-redux';
 import { putAwayActiveChat } from '@/slices/activeChatSlice';
+import { removeAllMessages } from '@/slices/messagesSlice';
 
 interface NewChatButtonProps {
   onMobileClose?: () => void;
@@ -14,7 +15,9 @@ export function NewChatButton( { onMobileClose }: NewChatButtonProps ) {
       onMobileClose();
     }
     dispatch(putAwayActiveChat());
+    dispatch(removeAllMessages());
   }
+  
   return (
     <Box sx={{ p: 2 }}>
       <Button

@@ -10,7 +10,10 @@ const useGetChats = (limit: number = 50, token: string) => {
     queryFn: ({ pageParam = 0 }) => fetchChats({ offset: pageParam, limit, token }),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
-      const currentOffset = lastPage.offset;
+      if (!lastPage || !lastPage.items) {
+        return undefined;
+      }
+      const currentOffset = lastPage.offset || 0;
       const loadedItems = currentOffset + lastPage.items.length;
       if (lastPage.items.length < lastPage.limit || loadedItems >= lastPage.count) {
         return undefined;

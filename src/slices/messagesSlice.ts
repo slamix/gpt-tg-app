@@ -19,11 +19,11 @@ const messagesSlice = createSlice({
     addMessage: (state, { payload }) => {
       state.messages.push(payload);
     },
-    removeMessages: (state, { payload }) => {
-      state.messages = state.messages.filter((message) => message.chat.id !== payload);
-    }
+    removeAllMessages: (state) => {
+      state.messages = [];
+    },
   }
 });
 
-export const { addMessage, addMessages, removeMessages } = messagesSlice.actions;
+export const { addMessage, addMessages, removeAllMessages } = messagesSlice.actions;
 export default messagesSlice.reducer;

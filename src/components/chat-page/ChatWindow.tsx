@@ -14,13 +14,13 @@ import { getMessages } from '@/services/getMessages';
 import { addMessages } from '@/slices/messagesSlice';
 
 interface ChatWindowProps {
-  onScrollDirectionChange: (showTitle: boolean) => void;
+  onScrollDirectionChange?: (isScrollingDown: boolean) => void;
 }
 
 export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const dispatch = useDispatch();
   const messages = useSelector((state: RootState) => state.messages.messages);
-  const activeChat = useSelector((state: RootState) => state.activeChat.activeChat);
+  const { activeChatId, isNewChat } = useSelector((state: RootState) => state.activeChat);
   const token = useSelector((state: RootState) => state.auth.token);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -34,19 +34,19 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
 
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!activeChat?.id) return;
+      if (!activeChatId || isNewChat) return;
       setIsLoading(true);
       try {
-        const { items } = await getMessages(activeChat.id, token as string);
+        const { items } = await getMessages(activeChatId, token as string);
         dispatch(addMessages(items));
       } catch (error) {
-        console.log(error);
+        console.log('Ошибка получения сообщений:', error);
       } finally {
         setIsLoading(false);
       }
     }
     fetchMessages();
-  }, [activeChat?.id, dispatch]);
+  }, [activeChatId, dispatch]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -54,32 +54,23 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
     }
   }, [messages, isLoading]);
 
-  // Обработчик скролла для определения направления
+  // Отслеживание направления скролла
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !onScrollDirectionChange) return;
 
     const handleScroll = () => {
-      const currentScrollTop = container.scrollTop;
-      const scrollHeight = container.scrollHeight;
-      const clientHeight = container.clientHeight;
+      const scrollTop = container.scrollTop;
+      const isScrollingDown = scrollTop > lastScrollTop.current;
       
-      // Определяем, находимся ли мы близко к низу (в пределах 100px)
-      const isNearBottom = scrollHeight - clientHeight - currentScrollTop < 100;
-      
-      // Скролл вверх - скрываем заголовок
-      if (currentScrollTop < lastScrollTop.current) {
-        onScrollDirectionChange(false);
+      // Обновляем только если направление изменилось и скролл больше порога
+      if (Math.abs(scrollTop - lastScrollTop.current) > 5) {
+        onScrollDirectionChange(isScrollingDown);
+        lastScrollTop.current = scrollTop;
       }
-      // Скролл вниз или около низа - показываем заголовок
-      else if (currentScrollTop > lastScrollTop.current || isNearBottom) {
-        onScrollDirectionChange(true);
-      }
-      
-      lastScrollTop.current = currentScrollTop;
     };
 
-    container.addEventListener('scroll', handleScroll);
+    container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
   }, [onScrollDirectionChange]);
 
@@ -90,6 +81,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
         flex: 1,
         overflow: 'auto',
         p: 1,
+        pt: '70px', // Отступ сверху для плавающего хедера
         pb: '140px', // Отступ снизу для формы ввода
         backgroundColor: 'background.default',
         scrollBehavior: 'smooth',
@@ -160,7 +152,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
       {!isLoading && (
         <Container maxWidth="md" sx={{ px: { xs: 1, sm: 2 } }}>
           <List sx={{ py: 1 }}>
-            {messages && Array.isArray(messages) && activeChat !== null ? (
+            {messages && Array.isArray(messages) && activeChatId !== null ? (
               <>
                 {messages.map((message, index) => {
                   // Четный индекс (0, 2, 4...) = пользователь, нечетный = модель

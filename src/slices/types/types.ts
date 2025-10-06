@@ -13,12 +13,4 @@ export interface Chat {
   chat_subject: string;
 };
 
-export interface Message {
-  id: number;
-  chat: {
-    id: number;
-  },
-  text: string;
-}
-
 export type ActiveChat = Chat | null;
