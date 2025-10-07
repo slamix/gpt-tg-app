@@ -3,6 +3,7 @@ import activeChatReducer from "@/slices/activeChatSlice";
 import messagesReducer from "@/slices/messagesSlice";
 import authReducer from "@/slices/authSlice";
 import modalReducer from "@/slices/modalSlice";
+import waitingMsgReducer from "@/slices/waitingMsgSlice";
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     activeChat: activeChatReducer,
     messages: messagesReducer,
     modals: modalReducer,
+    waitingMsg: waitingMsgReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

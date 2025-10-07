@@ -27,6 +27,7 @@ export const authorize = createAsyncThunk<string, string, { rejectValue: string 
           headers: { "Content-Type": "application/json" },
         }
       );
+      console.log(res.data);
 
       const { access_token } = res.data;
 
