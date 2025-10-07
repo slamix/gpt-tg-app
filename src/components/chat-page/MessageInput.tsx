@@ -20,7 +20,10 @@ import { RootState } from '@/slices';
 import { askChat } from '@/services/askChat';
 import { addMessage } from '@/slices/messagesSlice';
 import { useCreateChat } from '@/hooks/useCreateChat';
+import { useRenameChat } from '@/hooks/useRenameChat';
 import { setNewActiveChat } from '@/slices/activeChatSlice';
+import { setWaitingMsg, setNotWaitingMsg } from '@/slices/waitingMsgSlice';
+import { getChatById } from '@/services/getChatById';
 
 interface FormData {
   message: string;
@@ -42,6 +45,7 @@ export function MessageInput() {
   const token = useSelector((state: RootState) => state.auth.token);
   
   const createChatMutation = useCreateChat({ token: token as string });
+  const renameChatMutation = useRenameChat({ token: token as string });
   
   // Автопрокрутка вниз при наборе текста
   useEffect(() => {
@@ -70,44 +74,58 @@ export function MessageInput() {
       if (activeChatId === null) {
         const res = await createChatMutation.mutateAsync();
         dispatch(setNewActiveChat(res.id));
-        
-        const messageData = await askChat({ 
-          chatId: res.id, 
-          text: message.trim(), 
-          token: token as string 
-        });
 
         const sentMessage = {
-          id: messageData.id,
-          chat: {
-            id: res.id,
-          },
-          text: message.trim(),
-        }
-        dispatch(addMessage(sentMessage));
-        
-        setMessageValue('');
-        reset();
-      } else {
-        const responseData = await askChat({ 
-          chatId: activeChatId, 
-          text: message.trim(), 
-          token: token as string 
-        });
-        
-        const sentMessage = {
-          id: responseData.id,
           chat: {
             id: activeChatId,
           },
           text: message.trim(),
         }
         dispatch(addMessage(sentMessage));
+        
+        await askChat({ 
+          chatId: res.id, 
+          text: message.trim(), 
+          token: token as string 
+        });
+
+        dispatch(setWaitingMsg());
+        setMessageValue('');
+        reset();
+
+        // Получаем метаданные чата (включая автоматически сгенерированный заголовок)
+        const chatMetaData = await getChatById(res.id, token as string);
+        
+        // Переименовываем чат с "Новый чат" на сгенерированный заголовок
+        if (chatMetaData.chat_subject && chatMetaData.chat_subject !== 'Новый чат') {
+          await renameChatMutation.mutateAsync({
+            chatId: res.id,
+            newSubject: chatMetaData.chat_subject,
+          });
+        }
+        
+      } else {
+        const sentMessage = {
+          chat: {
+            id: activeChatId,
+          },
+          text: message.trim(),
+        }
+        dispatch(addMessage(sentMessage));
+        
+        await askChat({ 
+          chatId: activeChatId, 
+          text: message.trim(), 
+          token: token as string 
+        });
+
+        dispatch(setWaitingMsg());
         setMessageValue('');
         reset();
       }
     } catch (error) {
       console.log("Ошибка при отправке сообщения:", error);
+      dispatch(setNotWaitingMsg());
     } finally {
       setIsSending(false);
     }

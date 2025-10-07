@@ -11,7 +11,9 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/slices';
 import { getMessages } from '@/services/getMessages';
-import { addMessages } from '@/slices/messagesSlice';
+import { addMessages, addMessage } from '@/slices/messagesSlice';
+import { getLastMessage } from '@/services/getLastMessage';
+import { setNotWaitingMsg } from '@/slices/waitingMsgSlice';
 
 interface ChatWindowProps {
   onScrollDirectionChange?: (isScrollingDown: boolean) => void;
@@ -22,6 +24,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const messages = useSelector((state: RootState) => state.messages.messages);
   const { activeChatId, isNewChat } = useSelector((state: RootState) => state.activeChat);
   const token = useSelector((state: RootState) => state.auth.token);
+  const isWaitingMsg = useSelector((state: RootState) => state.waitingMsg.isWaitingMsg);
   const [isLoading, setIsLoading] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -29,7 +32,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const lastScrollTop = useRef(0);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -49,10 +52,31 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   }, [activeChatId, dispatch]);
 
   useEffect(() => {
-    if (!isLoading) {
-      scrollToBottom();
+    const fetchNewMessage = async () => {
+      if (!isWaitingMsg || !activeChatId) return;
+      
+      try {
+        const res = await getLastMessage(activeChatId, token as string);
+        console.log('Получено сообщение от модели:', res);
+        dispatch(addMessage(res));
+      } catch (error) {
+        console.error('Ошибка при получении сообщения:', error);
+      } finally {
+        // Сбрасываем флаг ожидания после получения сообщения
+        dispatch(setNotWaitingMsg());
+      }
     }
-  }, [messages, isLoading]);
+    fetchNewMessage();
+  }, [isWaitingMsg, activeChatId, token, dispatch]);
+
+  // Автоматический скролл при изменении сообщений
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+  }, [messages]);
 
   // Отслеживание направления скролла
   useEffect(() => {
@@ -160,7 +184,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                   
                   return (
                     <ListItem
-                      key={message.id}
+                      key={index}
                       sx={{
                         display: 'flex',
                         justifyContent: isUser ? 'flex-end' : 'flex-start',

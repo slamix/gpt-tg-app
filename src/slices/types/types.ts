@@ -1,10 +1,10 @@
 export interface Message {
-  id: number;
+  id?: number;
   chat: {
     id: number;
   },
   text: string;
-  //timestamp: string; // Изменено с Date на string для сериализации
+  hasFile?: boolean;
 };
 
 export interface Chat {
