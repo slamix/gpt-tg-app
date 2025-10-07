@@ -29,7 +29,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const lastScrollTop = useRef(0);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
   };
 
   useEffect(() => {
