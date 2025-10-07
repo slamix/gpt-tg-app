@@ -1,5 +1,8 @@
 import { Box, Typography, Button } from '@mui/material';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import { retrieveRawInitData } from '@telegram-apps/sdk';
+import { dispatch } from '@/slices';
+import { authorize } from '@/slices/authSlice';
 
 interface ErrorPageProps {
   error: string;
@@ -7,7 +10,10 @@ interface ErrorPageProps {
 
 export default function ErrorPage({ error }: ErrorPageProps) {
   const handleReload = () => {
-    window.location.reload();
+    const initData = retrieveRawInitData();
+    if (initData) {
+      dispatch(authorize(initData) as any);
+    }
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   Box,
@@ -27,8 +27,10 @@ interface FormData {
 }
 
 export function MessageInput() {
-  const { register, handleSubmit, reset, watch } = useForm<FormData>();
+  const { reset, setValue } = useForm<FormData>();
   const [isSending, setIsSending] = useState(false);
+  const [messageValue, setMessageValue] = useState('');
+  const textFieldRef = useRef<HTMLDivElement>(null);
   
   // TODO: Раскомментировать когда API для файлов будет готово
   // const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
@@ -41,10 +43,25 @@ export function MessageInput() {
   
   const createChatMutation = useCreateChat({ token: token as string });
   
-  const messageValue = watch('message', '');
+  // Автопрокрутка вниз при наборе текста
+  useEffect(() => {
+    if (textFieldRef.current) {
+      const textarea = textFieldRef.current.querySelector('textarea');
+      if (textarea) {
+        textarea.scrollTop = textarea.scrollHeight;
+      }
+    }
+  }, [messageValue]);
+  
+  // Обработчик изменения значения
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setMessageValue(value);
+    setValue('message', value);
+  };
 
-  const onSubmit = async (data: FormData) => {    
-    const { message } = data;
+  const onSubmit = async () => {    
+    const message = messageValue;
     if (!message.trim()) return;
     
     setIsSending(true);
@@ -69,6 +86,7 @@ export function MessageInput() {
         }
         dispatch(addMessage(sentMessage));
         
+        setMessageValue('');
         reset();
       } else {
         const responseData = await askChat({ 
@@ -85,6 +103,7 @@ export function MessageInput() {
           text: message.trim(),
         }
         dispatch(addMessage(sentMessage));
+        setMessageValue('');
         reset();
       }
     } catch (error) {
@@ -129,26 +148,32 @@ export function MessageInput() {
         >
           <Box
             component="form"
-            onSubmit={handleSubmit(onSubmit)}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (messageValue.trim() && !isSending) {
+                onSubmit();
+              }
+            }}
             sx={{
               display: 'flex',
               gap: 1,
-              alignItems: 'center',
+              alignItems: 'flex-end', // Выравниваем по нижней части для больших текстов
               width: '100%',
             }}
           >
             <TextField
-              {...register('message')}
+              ref={textFieldRef}
               fullWidth
               multiline
-              maxRows={4}
+              value={messageValue}
+              onChange={handleChange}
               placeholder="Спросите что-нибудь..."
               variant="outlined"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  if (messageValue?.trim() && !isSending) {
-                    handleSubmit(onSubmit)();
+                  if (messageValue.trim() && !isSending) {
+                    onSubmit();
                   }
                 }
               }}
@@ -158,8 +183,8 @@ export function MessageInput() {
                   backgroundColor: 'transparent',
                   borderRadius: '20px',
                   fontSize: '0.95rem',
-                  height: '40px',
-                  minHeight: '40px',
+                  padding: 0,
+                  alignItems: 'flex-start',
                   '& fieldset': {
                     border: 'none',
                   },
@@ -172,8 +197,24 @@ export function MessageInput() {
                 },
                 '& .MuiInputBase-input': {
                   color: 'text.primary',
-                  padding: '0 14px',
-                  height: '40px',
+                  padding: '10px 14px',
+                  minHeight: '20px',
+                  maxHeight: 'calc(50vh - 100px)', // Максимум половина экрана минус отступы
+                  overflowY: 'auto !important',
+                  boxSizing: 'border-box',
+                  '&::-webkit-scrollbar': {
+                    width: '6px',
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    background: 'transparent',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    background: 'rgba(66, 153, 225, 0.3)',
+                    borderRadius: '3px',
+                    '&:hover': {
+                      background: 'rgba(66, 153, 225, 0.5)',
+                    },
+                  },
                 },
                 '& .MuiInputBase-input::placeholder': {
                   color: 'text.secondary',
@@ -184,7 +225,13 @@ export function MessageInput() {
             <Button
               type="submit"
               variant="contained"
-              disabled={!messageValue?.trim() || isSending}
+              disabled={!messageValue.trim() || isSending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (messageValue.trim() && !isSending) {
+                  onSubmit();
+                }
+              }}
               sx={{
                 minWidth: 40,
                 width: 40,
