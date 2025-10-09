@@ -2,7 +2,7 @@ import { Box, Typography, Button } from '@mui/material';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { retrieveRawInitData } from '@telegram-apps/sdk';
 import { dispatch } from '@/slices';
-import { authorize } from '@/slices/authSlice';
+import { initAuth } from '@/slices/thunks/authThunks';
 
 interface ErrorPageProps {
   error: string;
@@ -10,9 +10,14 @@ interface ErrorPageProps {
 
 export default function ErrorPage({ error }: ErrorPageProps) {
   const handleReload = () => {
+    console.log('🔄 Перезагрузка приложения...');
     const initData = retrieveRawInitData();
+    console.log('📱 initData для перезагрузки:', initData ? 'получены' : 'НЕ получены');
     if (initData) {
-      dispatch(authorize(initData) as any);
+      dispatch(initAuth(initData) as any);
+    } else {
+      console.error('❌ Не удалось получить initData для перезагрузки');
+      window.location.reload();
     }
   };
 

@@ -1,15 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createChat } from '@/services/createChat';
 
-interface UseCreateChatParams {
-  token: string;
-}
-
-export const useCreateChat = ({ token }: UseCreateChatParams) => {
+export const useCreateChat = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => createChat({ token }),
+    mutationFn: () => createChat(),
     onSuccess: () => {
       // Инвалидируем кэш чатов, чтобы обновить список
       queryClient.invalidateQueries({ queryKey: ['chats'] });

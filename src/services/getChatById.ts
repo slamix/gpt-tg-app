@@ -1,21 +1,10 @@
-import axios from 'axios';
-import { Chat } from '@/slices/types/types';
+import { api } from "@/api/axiosInstance";
+import { Chat } from "@/slices/types/types";
 
 /**
- * API функция для получения чата по ID
- * @param chatId - ID чата
- * @param token - Токен авторизации
- * @returns Promise с данными чата
+ * Получает чат по ID
  */
-export const getChatById = async (chatId: number, token: string): Promise<Chat> => {
-  const response = await axios.get<Chat>(
-    `${import.meta.env.VITE_API_HOST}chats/by-id/${chatId}`,
-    {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-      },
-    }
-  );
-  return response.data;
+export const getChatById = async (chatId: number): Promise<Chat> => {
+  const { data } = await api.get<Chat>(`chats/by-id/${chatId}`);
+  return data;
 };
-

@@ -40,7 +40,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
       if (!activeChatId || isNewChat) return;
       setIsLoading(true);
       try {
-        const { items } = await getMessages(activeChatId, token as string);
+        const { items } = await getMessages(activeChatId);
         dispatch(addMessages(items));
       } catch (error) {
         console.log('Ошибка получения сообщений:', error);
@@ -56,7 +56,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
       if (!isWaitingMsg || !activeChatId) return;
       
       try {
-        const res = await getLastMessage(activeChatId, token as string);
+        const res = await getLastMessage(activeChatId);
         console.log('Получено сообщение от модели:', res);
         dispatch(addMessage(res));
       } catch (error) {

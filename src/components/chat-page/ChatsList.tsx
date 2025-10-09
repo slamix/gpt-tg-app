@@ -47,7 +47,7 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
     isFetchingNextPage,
     isLoading,
     error,
-  } = useGetChats(50, token as any);
+  } = useGetChats(50);
 
   const allChats = getAllChatsFromPages(data?.pages);
 
