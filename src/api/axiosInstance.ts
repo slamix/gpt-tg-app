@@ -50,7 +50,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       // Если рефреш уже идёт - добавляем запрос в очередь
       if (isRefreshing) {
-        console.log('⏳ Рефреш уже идёт, добавляем запрос в очередь');
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -68,11 +67,9 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        console.log('🔄 Получили 401, пытаемся обновить токен через /auth/refresh...');
         const newToken = await refreshToken();
         
         if (newToken) {
-          console.log('✅ Токен успешно обновлён через /auth/refresh, повторяем запрос');
           await setToken(newToken);
           store.dispatch(setReduxToken(newToken));
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
@@ -80,9 +77,6 @@ api.interceptors.response.use(
           isRefreshing = false;
           return api(originalRequest);
         } else {
-          // Refresh не удался - сессия истекла
-          console.error('❌ Refresh токен истёк - сессия полностью истекла');
-          console.error('❌ Необходимо перезапустить приложение из Telegram');
           await removeToken();
           store.dispatch(setReduxToken(null));
           processQueue(new Error('Сессия истекла'), null);
@@ -90,7 +84,6 @@ api.interceptors.response.use(
           return Promise.reject(new Error('Сессия истекла'));
         }
       } catch (err) {
-        console.error('❌ Ошибка при рефреше токена:', err);
         await removeToken();
         store.dispatch(setReduxToken(null));
         processQueue(err as Error, null);

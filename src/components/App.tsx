@@ -31,7 +31,6 @@ export function App() {
         });
         setIsInitialized(true);
       } catch (err: any) {
-        console.error('❌ Ошибка инициализации SDK:', err);
         setIsInitialized(true); // Всё равно продолжаем
       }
     };
@@ -44,32 +43,22 @@ export function App() {
 
     const checkAuthAndInit = async () => {
       try {
-        console.log('🔍 Проверяем токен в хранилище...');
         const { getToken } = await import('@/utils/tokenStorage');
         const storedToken = await getToken();
         
         if (storedToken) {
-          // Токен найден в хранилище - загружаем в Redux
-          console.log('✅ Токен найден в хранилище, загружаем в state');
           dispatch(setToken(storedToken));
           setIsCheckingAuth(false);
           return;
         }
         
-        // Токена нет - нужна первичная авторизация через initData
-        console.log('⚠️ Токен НЕ найден в хранилище, требуется первичная авторизация');
         const initData = retrieveRawInitData();
-        console.log('📱 initData:', initData ? 'получены' : 'НЕ получены');
         
         if (initData) {
-          console.log('🔐 Запускаем первичную авторизацию через /auth/telegram...');
           dispatch(initAuth(initData) as any);
-        } else {
-          console.error("❌ initData не найдены — отсутствует контекст Telegram WebApp");
         }
         setIsCheckingAuth(false);
       } catch (err: any) {
-        console.error('❌ Ошибка при проверке авторизации:', err);
         setIsCheckingAuth(false);
       }
     };
@@ -78,19 +67,14 @@ export function App() {
   }, [isInitialized, dispatch]);
 
   // 3️⃣ Основной рендер приложения
-  console.log('🎨 Состояние рендера:', { token: !!token, isInitialized, isCheckingAuth });
-  
-  // Пока проверяем токен - показываем пустой экран
   if (isCheckingAuth) {
     return null;
   }
   
-  // Если токена нет - показываем пустой экран
   if (!token) {
     return null;
   }
 
-  console.log('✅ Токен есть, рендерим приложение');
   return (
     <QueryClientProvider client={queryClient}>
       <HashRouter>

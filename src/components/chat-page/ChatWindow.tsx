@@ -43,7 +43,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
         const { items } = await getMessages(activeChatId);
         dispatch(addMessages(items));
       } catch (error) {
-        console.log('Ошибка получения сообщений:', error);
+        // Ignore error
       } finally {
         setIsLoading(false);
       }
@@ -57,10 +57,9 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
       
       try {
         const res = await getLastMessage(activeChatId);
-        console.log('Получено сообщение от модели:', res);
         dispatch(addMessage(res));
       } catch (error) {
-        console.error('Ошибка при получении сообщения:', error);
+        // Ignore error
       } finally {
         // Сбрасываем флаг ожидания после получения сообщения
         dispatch(setNotWaitingMsg());

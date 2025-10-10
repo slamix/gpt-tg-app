@@ -25,9 +25,8 @@ export function ModalRename() {
   const dispatch = useDispatch();
   const modalRenameIsOpen = useSelector((state: RootState) => state.modals.renameModalIsOpen);
   const currentChat = useSelector((state: RootState) => state.modals.currentChat);
-  const token = useSelector((state: RootState) => state.auth.token);
 
-  const renameChatMutation = useRenameChat({ token: token as string });
+  const renameChatMutation = useRenameChat();
 
   const {
     register,
@@ -69,7 +68,7 @@ export function ModalRename() {
       });
       handleClose();
     } catch (error) {
-      console.error('Ошибка при переименовании чата:', error);
+      // Ignore error
     }
   };
 

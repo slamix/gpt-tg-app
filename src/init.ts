@@ -26,11 +26,8 @@ export async function init(options: {
 }): Promise<void> {
   // Если уже инициализирован - пропускаем
   if (isInitialized) {
-    console.log('⚠️ SDK уже инициализирован, пропускаем');
     return;
   }
-
-  console.log('🚀 Инициализируем Telegram SDK...');
   
   // Set @telegram-apps/sdk-react debug mode and initialize it.
   setDebug(options.debug);
@@ -79,7 +76,6 @@ export async function init(options: {
       bindThemeParamsCssVars();
     } catch (err) {
       // Игнорируем ошибку если CSS переменные уже привязаны
-      console.warn('CSS variables already bound, ignoring');
     }
   }
 
@@ -88,11 +84,9 @@ export async function init(options: {
       bindViewportCssVars();
     } catch (err) {
       // Игнорируем ошибку если CSS переменные уже привязаны
-      console.warn('Viewport CSS variables already bound, ignoring');
     }
   });
 
   // Отмечаем что инициализация завершена
   isInitialized = true;
-  console.log('✅ Telegram SDK инициализирован');
 }

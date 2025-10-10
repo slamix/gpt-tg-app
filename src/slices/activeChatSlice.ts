@@ -18,19 +18,16 @@ const activeChatSlice = createSlice({
       state.activeChatId = payload;
       sessionStorage.setItem('activeChatId', payload);
       state.isNewChat = false;
-      console.log(state.activeChatId);
     },
     setNewActiveChat: (state, { payload }) => {
       state.activeChatId = payload;
       sessionStorage.setItem('activeChatId', payload);
       state.isNewChat = true;
-      console.log(payload);
     },
     putAwayActiveChat: (state) => {
       state.activeChatId = null;
       sessionStorage.removeItem('activeChat');
       state.isNewChat = false;
-      console.log(state.activeChatId);
     }
   }
 });
