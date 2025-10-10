@@ -20,10 +20,9 @@ export function ModalRemove() {
   const modalRemoveIsOpen = useSelector((state: RootState) => state.modals.removeModalIsOpen);
   const currentChat = useSelector((state: RootState) => state.modals.currentChat);
   const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
-  const token = useSelector((state: RootState) => state.auth.token);
   const onCloseSidebar = useSelector((state: RootState) => state.modals.onCloseSidebar);
 
-  const removeChatMutation = useRemoveChat({ token: token as string });
+  const removeChatMutation = useRemoveChat();
 
   const handleClose = () => {
     dispatch(setClose('remove'));
@@ -46,7 +45,7 @@ export function ModalRemove() {
         onCloseSidebar();
       }
     } catch (error) {
-      console.error('Ошибка при удалении чата:', error);
+      // Ignore error
     }
   };
   

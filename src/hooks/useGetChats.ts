@@ -4,10 +4,10 @@ import { fetchChats } from '@/services/getChats';
 /**
  * Hook для получения чатов с бесконечным скроллом
  */
-const useGetChats = (limit: number = 50, token: string) => {
+const useGetChats = (limit: number = 50) => {
   return useInfiniteQuery({
-    queryKey: ['chats', limit, token], // учитываем токен
-    queryFn: ({ pageParam = 0 }) => fetchChats({ offset: pageParam, limit, token }),
+    queryKey: ['chats', limit],
+    queryFn: ({ pageParam = 0 }) => fetchChats({ offset: pageParam, limit }),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
       if (!lastPage || !lastPage.items) {

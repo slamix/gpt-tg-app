@@ -35,7 +35,6 @@ interface ChatsListProps {
 export function ChatsList({ onMobileClose }: ChatsListProps) {
   const dispatch = useDispatch();
   const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
-  const token = useSelector((state: RootState) => state.auth.token);
 
   const queryClient = useQueryClient();
 
@@ -47,7 +46,7 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
     isFetchingNextPage,
     isLoading,
     error,
-  } = useGetChats(50, token as any);
+  } = useGetChats(50);
 
   const allChats = getAllChatsFromPages(data?.pages);
 

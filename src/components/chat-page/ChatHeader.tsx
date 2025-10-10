@@ -17,10 +17,9 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ onMobileToggle, showChatTitle }: ChatHeaderProps) {
   const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
-  const token = useSelector((state: RootState) => state.auth.token);
   
   // Получаем список чатов для поиска активного чата
-  const { data } = useGetChats(50, token as string);
+  const { data } = useGetChats(50);
   const allChats = getAllChatsFromPages(data?.pages);
   
   // Находим активный чат по ID

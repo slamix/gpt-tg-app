@@ -42,10 +42,9 @@ export function MessageInput() {
   // const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
   const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
-  const token = useSelector((state: RootState) => state.auth.token);
   
-  const createChatMutation = useCreateChat({ token: token as string });
-  const renameChatMutation = useRenameChat({ token: token as string });
+  const createChatMutation = useCreateChat();
+  const renameChatMutation = useRenameChat();
   
   // Автопрокрутка вниз при наборе текста
   useEffect(() => {
@@ -86,7 +85,6 @@ export function MessageInput() {
         await askChat({ 
           chatId: res.id, 
           text: message.trim(), 
-          token: token as string 
         });
 
         dispatch(setWaitingMsg());
@@ -94,7 +92,7 @@ export function MessageInput() {
         reset();
 
         // Получаем метаданные чата (включая автоматически сгенерированный заголовок)
-        const chatMetaData = await getChatById(res.id, token as string);
+        const chatMetaData = await getChatById(res.id);
         
         // Переименовываем чат с "Новый чат" на сгенерированный заголовок
         if (chatMetaData.chat_subject && chatMetaData.chat_subject !== 'Новый чат') {
@@ -116,7 +114,6 @@ export function MessageInput() {
         await askChat({ 
           chatId: activeChatId, 
           text: message.trim(), 
-          token: token as string 
         });
 
         dispatch(setWaitingMsg());
@@ -124,7 +121,6 @@ export function MessageInput() {
         reset();
       }
     } catch (error) {
-      console.log("Ошибка при отправке сообщения:", error);
       dispatch(setNotWaitingMsg());
     } finally {
       setIsSending(false);

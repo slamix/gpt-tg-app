@@ -1,21 +1,10 @@
-import axios from 'axios';
-import { Message } from './getMessages';
+import { api } from "@/api/axiosInstance";
+import { Message } from "./getMessages";
 
 /**
- * API функция для получения последнего сообщения от модели в чате
- * @param chatId - ID активного чата
- * @param token - Токен авторизации
- * @returns Promise с последним сообщением от модели
+ * Получает последнее сообщение в чате
  */
-export const getLastMessage = async (chatId: number, token: string): Promise<Message> => {
-  const response = await axios.get<Message>(
-    `${import.meta.env.VITE_API_HOST}chats/${chatId}/last-message`,
-    {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-      },
-    }
-  );
-  return response.data;
+export const getLastMessage = async (chatId: number): Promise<Message> => {
+  const { data } = await api.get<Message>(`chats/${chatId}/last-message`);
+  return data;
 };
-

@@ -1,7 +1,6 @@
 import {
   setDebug,
   mountBackButton,
-  restoreInitData,
   init as initSDK,
   bindThemeParamsCssVars,
   mountViewport,
@@ -14,6 +13,9 @@ import {
   miniApp,
 } from '@telegram-apps/sdk-react';
 
+// Флаг для предотвращения повторной инициализации
+let isInitialized = false;
+
 /**
  * Initializes the application and configures its dependencies.
  */
@@ -22,6 +24,11 @@ export async function init(options: {
   eruda: boolean;
   mockForMacOS: boolean;
 }): Promise<void> {
+  // Если уже инициализирован - пропускаем
+  if (isInitialized) {
+    return;
+  }
+  
   // Set @telegram-apps/sdk-react debug mode and initialize it.
   setDebug(options.debug);
   initSDK();
@@ -65,10 +72,21 @@ export async function init(options: {
   
   if (miniApp.mountSync.isAvailable()) {
     miniApp.mountSync();
-    bindThemeParamsCssVars();
+    try {
+      bindThemeParamsCssVars();
+    } catch (err) {
+      // Игнорируем ошибку если CSS переменные уже привязаны
+    }
   }
 
   mountViewport.isAvailable() && mountViewport().then(() => {
-    bindViewportCssVars();
+    try {
+      bindViewportCssVars();
+    } catch (err) {
+      // Игнорируем ошибку если CSS переменные уже привязаны
+    }
   });
+
+  // Отмечаем что инициализация завершена
+  isInitialized = true;
 }

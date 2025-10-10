@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { api } from '@/api/axiosInstance';
 import { Chat } from '@/slices/types/types';
 
 // Интерфейс ответа от API
@@ -13,18 +13,17 @@ export interface GetChatsResponse {
 interface GetChatsParams {
   offset?: number;
   limit?: number;
-  token: string;
 }
 
 /**
  * API функция для получения чатов с пагинацией
  */
-export const fetchChats = async ({ offset = 0, limit = 50, token }: GetChatsParams): Promise<GetChatsResponse> => {
-  const response = await axios.get<GetChatsResponse>(`${import.meta.env.VITE_API_HOST}user/chats`, {
-    params: { limit, offset },
-    headers: { Authorization: `Bearer ${token}` },
+export const fetchChats = async (params: GetChatsParams = {}): Promise<GetChatsResponse> => {
+  const { offset = 0, limit = 50 } = params;
+  const { data } = await api.get<GetChatsResponse>("user/chats", {
+    params: { offset, limit },
   });
-  return response.data;
+  return data;
 };
 
 /**
