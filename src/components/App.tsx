@@ -4,22 +4,21 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/slices";
 import { initAuth } from "@/slices/thunks/authThunks";
-import { setError, setToken } from "@/slices/authSlice";
+import { setToken } from "@/slices/authSlice";
 import { init } from "@/init";
 import { retrieveRawInitData } from "@telegram-apps/sdk";
 import { routes } from "@/navigation/routes";
 import { ModalRemove } from "@/components/modals/ModalRemove";
 import { ModalRename } from "@/components/modals/ModalRename";
-import LoadingPage from "@/pages/LoadingPage";
-import ErrorPage from "@/pages/ErrorPage";
 
 // react-query клиент
 const queryClient = new QueryClient();
 
 export function App() {
   const dispatch = useDispatch();
-  const { token, loading, error } = useSelector((state: RootState) => state.auth);
+  const { token } = useSelector((state: RootState) => state.auth);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // 1️⃣ Инициализация Telegram SDK и окружения
   useEffect(() => {
@@ -34,86 +33,64 @@ export function App() {
       } catch (err: any) {
         console.error('❌ Ошибка инициализации SDK:', err);
         setIsInitialized(true); // Всё равно продолжаем
-        dispatch(setError(err.message || 'Ошибка инициализации'));
       }
     };
     initializeApp();
   }, [dispatch]);
 
-  // 2️⃣ Проверяем токен и запускаем авторизацию только если его нет
+  // 2️⃣ Проверяем токен в хранилище и запускаем авторизацию только если его нет
   useEffect(() => {
     if (!isInitialized) return;
 
     const checkAuthAndInit = async () => {
       try {
-        // Импортируем getToken здесь чтобы избежать циклических зависимостей
+        console.log('🔍 Проверяем токен в хранилище...');
         const { getToken } = await import('@/utils/tokenStorage');
         const storedToken = await getToken();
         
-        console.log('🔍 Проверяем токен в хранилище:', storedToken ? 'НАЙДЕН' : 'НЕТ');
-        
         if (storedToken) {
-          // Токен есть - загружаем его в Redux и используем
+          // Токен найден в хранилище - загружаем в Redux
           console.log('✅ Токен найден в хранилище, загружаем в state');
           dispatch(setToken(storedToken));
+          setIsCheckingAuth(false);
           return;
         }
         
         // Токена нет - нужна первичная авторизация через initData
-        console.log('❌ Токена нет, требуется первичная авторизация');
+        console.log('⚠️ Токен НЕ найден в хранилище, требуется первичная авторизация');
         const initData = retrieveRawInitData();
         console.log('📱 initData:', initData ? 'получены' : 'НЕ получены');
         
         if (initData) {
-          console.log('➡️ Запускаем первичную авторизацию через initData...');
+          console.log('🔐 Запускаем первичную авторизацию через /auth/telegram...');
           dispatch(initAuth(initData) as any);
         } else {
-          console.error("❌ initData не найдена — отсутствует контекст Telegram WebApp");
-          dispatch(setError("Приложение должно запускаться в Telegram"));
+          console.error("❌ initData не найдены — отсутствует контекст Telegram WebApp");
         }
+        setIsCheckingAuth(false);
       } catch (err: any) {
         console.error('❌ Ошибка при проверке авторизации:', err);
-        dispatch(setError(err.message || 'Ошибка авторизации'));
+        setIsCheckingAuth(false);
       }
     };
 
     checkAuthAndInit();
   }, [isInitialized, dispatch]);
 
-  // 3️⃣ Защита от бесконечного loading (таймаут 10 секунд)
-  useEffect(() => {
-    if (loading) {
-      const timeout = setTimeout(() => {
-        console.error('⏰ Таймаут авторизации - прошло более 10 секунд');
-        dispatch(setError('Превышено время ожидания авторизации'));
-      }, 10000);
-      return () => clearTimeout(timeout);
-    }
-  }, [loading, dispatch]);
-
-  // 4️⃣ Загрузочное и ошибочное состояние
-  console.log('🎨 Состояние рендера:', { loading, error: !!error, token: !!token, isInitialized });
+  // 3️⃣ Основной рендер приложения
+  console.log('🎨 Состояние рендера:', { token: !!token, isInitialized, isCheckingAuth });
   
-  // Показываем загрузку пока инициализируется или авторизуется
-  if (!isInitialized || loading) {
-    console.log('⏳ Показываем LoadingPage');
-    return <LoadingPage />;
+  // Пока проверяем токен - показываем пустой экран
+  if (isCheckingAuth) {
+    return null;
   }
   
-  // Показываем ошибку если есть
-  if (error) {
-    console.log('❌ Показываем ErrorPage:', error);
-    return <ErrorPage error={error} />;
-  }
-
-  // Если токена нет - показываем загрузку (ждём результата авторизации)
+  // Если токена нет - показываем пустой экран
   if (!token) {
-    console.log('⏳ Ждём токен...');
-    return <LoadingPage />;
+    return null;
   }
 
-  // 5️⃣ Основной рендер приложения
-  console.log('✅ Рендерим основное приложение');
+  console.log('✅ Токен есть, рендерим приложение');
   return (
     <QueryClientProvider client={queryClient}>
       <HashRouter>

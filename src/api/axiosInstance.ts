@@ -2,6 +2,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { getToken, setToken, removeToken } from "@/utils/tokenStorage";
 import { refreshToken } from "./authApi";
+import { store } from "@/slices";
+import { setToken as setReduxToken } from "@/slices/authSlice";
 
 export const api = axios.create({
   baseURL: `${import.meta.env.VITE_API_HOST}`,
@@ -70,33 +72,29 @@ api.interceptors.response.use(
         const newToken = await refreshToken();
         
         if (newToken) {
-          console.log('✅ Токен успешно обновлён, повторяем запрос');
+          console.log('✅ Токен успешно обновлён через /auth/refresh, повторяем запрос');
           await setToken(newToken);
+          store.dispatch(setReduxToken(newToken));
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           processQueue(null, newToken);
           isRefreshing = false;
           return api(originalRequest);
         } else {
-          // Refresh не удался - очищаем всё и перезагружаем
-          console.error('❌ Refresh вернул 401 - сессия истекла, нужна новая авторизация');
+          // Refresh не удался - сессия истекла
+          console.error('❌ Refresh токен истёк - сессия полностью истекла');
+          console.error('❌ Необходимо перезапустить приложение из Telegram');
           await removeToken();
+          store.dispatch(setReduxToken(null));
           processQueue(new Error('Сессия истекла'), null);
           isRefreshing = false;
-          
-          // Перезагружаем страницу для новой авторизации
-          console.log('🔄 Перезагружаем страницу для новой авторизации...');
-          setTimeout(() => window.location.reload(), 500);
-          return Promise.reject(error);
+          return Promise.reject(new Error('Сессия истекла'));
         }
       } catch (err) {
-        console.error('❌ Ошибка при рефреше:', err);
+        console.error('❌ Ошибка при рефреше токена:', err);
         await removeToken();
+        store.dispatch(setReduxToken(null));
         processQueue(err as Error, null);
         isRefreshing = false;
-        
-        // Перезагружаем страницу
-        console.log('🔄 Перезагружаем страницу для новой авторизации...');
-        setTimeout(() => window.location.reload(), 500);
         return Promise.reject(err);
       }
     }

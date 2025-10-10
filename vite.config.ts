@@ -33,11 +33,17 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
-
+    proxy: {
+      '/api': {
+        target: 'https://n8n.cryptofintech.ai',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
     allowedHosts: [
       'mireille-unbedaubed-kaden.ngrok-free.dev',
     ],
-    origin: 'https://mireille-unbedaubed-kaden.ngrok-free.dev',
+    // origin: 'https://mireille-unbedaubed-kaden.ngrok-free.dev',
   },
 });
 
