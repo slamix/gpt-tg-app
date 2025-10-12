@@ -9,9 +9,6 @@ interface AskChatResponse {
   id: number;
 }
 
-/**
- * Отправляет сообщение в чат
- */
 export async function askChat({ chatId, text }: AskChatParams): Promise<AskChatResponse> {
   const { data } = await api.post<AskChatResponse>(`chats/${chatId}/messages`, { text });
   return data;

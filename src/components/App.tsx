@@ -10,6 +10,7 @@ import { retrieveRawInitData } from "@telegram-apps/sdk";
 import { routes } from "@/navigation/routes";
 import { ModalRemove } from "@/components/modals/ModalRemove";
 import { ModalRename } from "@/components/modals/ModalRename";
+import { getToken } from "@/utils/tokenStorage";
 
 // react-query клиент
 const queryClient = new QueryClient();
@@ -25,25 +26,23 @@ export function App() {
     const initializeApp = async () => {
       try {
         await init({
-          debug: true,
-          eruda: true,
-          mockForMacOS: true,
+          debug: false,
+          eruda: false,
+          mockForMacOS: false,
         });
         setIsInitialized(true);
       } catch (err: any) {
-        setIsInitialized(true); // Всё равно продолжаем
+        setIsInitialized(true);
       }
     };
     initializeApp();
   }, [dispatch]);
 
-  // 2️⃣ Проверяем токен в хранилище и запускаем авторизацию только если его нет
   useEffect(() => {
     if (!isInitialized) return;
 
     const checkAuthAndInit = async () => {
       try {
-        const { getToken } = await import('@/utils/tokenStorage');
         const storedToken = await getToken();
         
         if (storedToken) {
@@ -52,10 +51,10 @@ export function App() {
           return;
         }
         
-        const initData = retrieveRawInitData();
-        
+        const initData = retrieveRawInitData();        
         if (initData) {
           dispatch(initAuth(initData) as any);
+        } else {
         }
         setIsCheckingAuth(false);
       } catch (err: any) {
@@ -66,7 +65,6 @@ export function App() {
     checkAuthAndInit();
   }, [isInitialized, dispatch]);
 
-  // 3️⃣ Основной рендер приложения
   if (isCheckingAuth) {
     return null;
   }

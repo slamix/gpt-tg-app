@@ -6,15 +6,8 @@ import {
   TextField,
   Button,
   Paper,
-  // TODO: Раскомментировать когда API для файлов будет готово
-  // IconButton,
-  // Chip,
-  // Typography,
-  // LinearProgress,
 } from '@mui/material';
 import { Send as SendIcon } from '@mui/icons-material';
-// TODO: Раскомментировать когда API для файлов будет готово
-// import { AttachFile as AttachFileIcon, Clear as ClearIcon } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/slices';
 import { askChat } from '@/services/askChat';
@@ -22,7 +15,7 @@ import { addMessage } from '@/slices/messagesSlice';
 import { useCreateChat } from '@/hooks/useCreateChat';
 import { useRenameChat } from '@/hooks/useRenameChat';
 import { setNewActiveChat } from '@/slices/activeChatSlice';
-import { setWaitingMsg, setNotWaitingMsg } from '@/slices/waitingMsgSlice';
+import { setWaitingMsg, setNotWaitingMsg, setOpenWaitingAnimation } from '@/slices/waitingMsgSlice';
 import { getChatById } from '@/services/getChatById';
 
 interface FormData {
@@ -34,19 +27,12 @@ export function MessageInput() {
   const [isSending, setIsSending] = useState(false);
   const [messageValue, setMessageValue] = useState('');
   const textFieldRef = useRef<HTMLDivElement>(null);
-  
-  // TODO: Раскомментировать когда API для файлов будет готово
-  // const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
-  // const [isUploading, setIsUploading] = React.useState(false);
-  // const [uploadProgress, setUploadProgress] = React.useState<{ [key: string]: number }>({});
-  // const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
   const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
   
   const createChatMutation = useCreateChat();
   const renameChatMutation = useRenameChat();
   
-  // Автопрокрутка вниз при наборе текста
   useEffect(() => {
     if (textFieldRef.current) {
       const textarea = textFieldRef.current.querySelector('textarea');
@@ -56,7 +42,6 @@ export function MessageInput() {
     }
   }, [messageValue]);
   
-  // Обработчик изменения значения
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setMessageValue(value);
@@ -64,9 +49,7 @@ export function MessageInput() {
   };
 
   const onSubmit = async () => {    
-    const message = messageValue;
-    if (!message.trim()) return;
-    
+    const message = messageValue.trim();    
     setIsSending(true);
     
     try {
@@ -81,6 +64,7 @@ export function MessageInput() {
           text: message.trim(),
         }
         dispatch(addMessage(sentMessage));
+        dispatch(setOpenWaitingAnimation());
         
         await askChat({ 
           chatId: res.id, 
@@ -91,10 +75,8 @@ export function MessageInput() {
         setMessageValue('');
         reset();
 
-        // Получаем метаданные чата (включая автоматически сгенерированный заголовок)
         const chatMetaData = await getChatById(res.id);
         
-        // Переименовываем чат с "Новый чат" на сгенерированный заголовок
         if (chatMetaData.chat_subject && chatMetaData.chat_subject !== 'Новый чат') {
           await renameChatMutation.mutateAsync({
             chatId: res.id,
@@ -110,6 +92,7 @@ export function MessageInput() {
           text: message.trim(),
         }
         dispatch(addMessage(sentMessage));
+        dispatch(setOpenWaitingAnimation());
         
         await askChat({ 
           chatId: activeChatId, 
@@ -171,7 +154,7 @@ export function MessageInput() {
             sx={{
               display: 'flex',
               gap: 1,
-              alignItems: 'flex-end', // Выравниваем по нижней части для больших текстов
+              alignItems: 'flex-end',
               width: '100%',
             }}
           >
@@ -213,7 +196,7 @@ export function MessageInput() {
                   color: 'text.primary',
                   padding: '10px 14px',
                   minHeight: '20px',
-                  maxHeight: 'calc(50vh - 100px)', // Максимум половина экрана минус отступы
+                  maxHeight: 'calc(50vh - 100px)',
                   overflowY: 'auto !important',
                   boxSizing: 'border-box',
                   '&::-webkit-scrollbar': {

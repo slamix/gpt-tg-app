@@ -36,7 +36,6 @@ const modalSlice = createSlice({
       } else if (payload === 'remove') {
         state.removeModalIsOpen = false;
       }
-      // Очищаем функцию при закрытии
       state.onCloseSidebar = undefined;
     }
   }

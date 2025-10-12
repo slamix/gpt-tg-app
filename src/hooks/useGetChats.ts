@@ -1,9 +1,7 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { fetchChats } from '@/services/getChats';
 
-/**
- * Hook для получения чатов с бесконечным скроллом
- */
+
 const useGetChats = (limit: number = 50) => {
   return useInfiniteQuery({
     queryKey: ['chats', limit],

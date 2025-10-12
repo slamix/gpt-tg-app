@@ -77,7 +77,7 @@ export function Sidebar( { mobileOpen, onMobileToggle }: SidebarProps ) {
           open={mobileOpen}
           onClose={onMobileToggle}
           ModalProps={{
-            keepMounted: true, // Лучшая производительность на мобильных
+            keepMounted: true,
           }}
           sx={{
             '& .MuiDrawer-paper': {

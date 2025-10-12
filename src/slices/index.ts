@@ -16,7 +16,6 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // Игнорируем несериализуемые значения в определенных путях
         ignoredActions: ['activeChat/setActiveChat'],
         ignoredActionsPaths: ['payload.timestamp'],
         ignoredPaths: ['activeChat.activeChat.timestamp'],

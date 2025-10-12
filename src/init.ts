@@ -13,18 +13,13 @@ import {
   miniApp,
 } from '@telegram-apps/sdk-react';
 
-// Флаг для предотвращения повторной инициализации
 let isInitialized = false;
 
-/**
- * Initializes the application and configures its dependencies.
- */
 export async function init(options: {
   debug: boolean;
   eruda: boolean;
   mockForMacOS: boolean;
 }): Promise<void> {
-  // Если уже инициализирован - пропускаем
   if (isInitialized) {
     return;
   }
@@ -75,7 +70,6 @@ export async function init(options: {
     try {
       bindThemeParamsCssVars();
     } catch (err) {
-      // Игнорируем ошибку если CSS переменные уже привязаны
     }
   }
 
@@ -83,10 +77,8 @@ export async function init(options: {
     try {
       bindViewportCssVars();
     } catch (err) {
-      // Игнорируем ошибку если CSS переменные уже привязаны
     }
   });
 
-  // Отмечаем что инициализация завершена
   isInitialized = true;
 }
