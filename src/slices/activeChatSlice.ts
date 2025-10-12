@@ -26,7 +26,7 @@ const activeChatSlice = createSlice({
     },
     putAwayActiveChat: (state) => {
       state.activeChatId = null;
-      sessionStorage.removeItem('activeChat');
+      sessionStorage.removeItem('activeChatId');
       state.isNewChat = false;
     }
   }
