@@ -6,7 +6,7 @@ import { RootState } from "@/slices";
 import { initAuth } from "@/slices/thunks/authThunks";
 import { setToken } from "@/slices/authSlice";
 import { init } from "@/init";
-import { retrieveRawInitData, miniApp } from "@telegram-apps/sdk";
+import { retrieveRawInitData } from "@telegram-apps/sdk";
 import { routes } from "@/navigation/routes";
 import { ModalRemove } from "@/components/modals/ModalRemove";
 import { ModalRename } from "@/components/modals/ModalRename";
@@ -76,14 +76,6 @@ export function App() {
 
     checkAuthAndInit();
   }, [isInitialized, dispatch]);
-
-  useEffect(() => {
-    if (token && !isCheckingAuth) {
-      if (miniApp.ready.isAvailable()) {
-        miniApp.ready();
-      }
-    }
-  }, [token, isCheckingAuth]);
 
   // 4️⃣ Основной рендер приложения
   console.log('🎨 Состояние рендера:', { token: !!token, isInitialized, isCheckingAuth });
