@@ -1,35 +1,26 @@
-# ---------- ЭТАП 1: СБОРКА ----------
-  FROM node:22.17.0-alpine AS build
+FROM node:22.17.0-alpine
 
-  # Рабочая директория в контейнере
-  WORKDIR /app
-  
-  # Копируем package.json и lock-файлы
-  COPY package*.json ./
-  
-  # Устанавливаем зависимости
-  RUN npm ci
-  
-  # Копируем остальной исходный код
-  COPY . .
-  
-  # Сборка проекта (vite build)
-  RUN npm run build
-  
-  
-  # ---------- ЭТАП 2: ПРОДАКШЕН (NGINX) ----------
-  FROM nginx:alpine
-  
-  # Удаляем дефолтный конфиг и добавляем свой
-  RUN rm /etc/nginx/conf.d/default.conf
-  COPY nginx.conf /etc/nginx/conf.d/default.conf
-  
-  # Копируем собранные файлы из первого этапа
-  COPY --from=build /app/dist /usr/share/nginx/html
-  
-  # Открываем порт
-  EXPOSE 80
-  
-  # Запуск Nginx
-  CMD ["nginx", "-g", "daemon off;"]
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN npm run build
+
+# Install serve globally to serve the built files
+RUN npm install -g serve
+
+# Expose port 5173
+EXPOSE 5173
+
+# Serve the built application
+CMD ["serve", "-s", "dist", "-l", "5173"]
   
