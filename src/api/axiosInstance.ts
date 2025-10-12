@@ -1,9 +1,10 @@
 // src/api/axiosInstance.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { getToken, setToken, removeToken } from "@/utils/tokenStorage";
-import { refreshToken } from "./authApi";
+import { refreshToken, authorize } from "./authApi";
 import { store } from "@/slices";
 import { setToken as setReduxToken } from "@/slices/authSlice";
+import { retrieveRawInitData } from "@telegram-apps/sdk";
 
 export const api = axios.create({
   baseURL: `${import.meta.env.VITE_API_HOST}`,
@@ -80,10 +81,27 @@ api.interceptors.response.use(
           isRefreshing = false;
           return api(originalRequest);
         } else {
-          // Refresh не удался - сессия истекла
-          console.error('❌ Refresh токен истёк - сессия полностью истекла');
-          console.error('❌ Необходимо перезапустить приложение из Telegram');
+          // Refresh не удался - пытаемся авторизоваться заново через initData
+          console.warn('⚠️ Refresh токен истёк, пытаемся авторизоваться заново через initData...');
           await removeToken();
+          
+          const initData = retrieveRawInitData();
+          if (initData) {
+            console.log('🔐 initData получены, запускаем повторную авторизацию...');
+            const freshToken = await authorize(initData);
+            
+            if (freshToken) {
+              console.log('✅ Повторная авторизация успешна, повторяем запрос');
+              store.dispatch(setReduxToken(freshToken));
+              originalRequest.headers.Authorization = `Bearer ${freshToken}`;
+              processQueue(null, freshToken);
+              isRefreshing = false;
+              return api(originalRequest);
+            }
+          }
+          
+          // Если не удалось получить initData или авторизоваться
+          console.error('❌ Не удалось авторизоваться заново, необходимо перезапустить приложение');
           store.dispatch(setReduxToken(null));
           processQueue(new Error('Сессия истекла'), null);
           isRefreshing = false;
@@ -91,7 +109,30 @@ api.interceptors.response.use(
         }
       } catch (err) {
         console.error('❌ Ошибка при рефреше токена:', err);
-        await removeToken();
+        
+        // Пытаемся авторизоваться заново через initData
+        try {
+          console.warn('⚠️ Пытаемся авторизоваться заново через initData...');
+          await removeToken();
+          
+          const initData = retrieveRawInitData();
+          if (initData) {
+            console.log('🔐 initData получены, запускаем повторную авторизацию...');
+            const freshToken = await authorize(initData);
+            
+            if (freshToken) {
+              console.log('✅ Повторная авторизация успешна, повторяем запрос');
+              store.dispatch(setReduxToken(freshToken));
+              originalRequest.headers.Authorization = `Bearer ${freshToken}`;
+              processQueue(null, freshToken);
+              isRefreshing = false;
+              return api(originalRequest);
+            }
+          }
+        } catch (reAuthErr) {
+          console.error('❌ Повторная авторизация не удалась:', reAuthErr);
+        }
+        
         store.dispatch(setReduxToken(null));
         processQueue(err as Error, null);
         isRefreshing = false;

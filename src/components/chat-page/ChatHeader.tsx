@@ -69,6 +69,7 @@ export function ChatHeader({ onMobileToggle, showChatTitle }: ChatHeaderProps) {
         <Box
           sx={{
             flex: 1,
+            minWidth: 0, // Позволяет flex-элементу сжиматься меньше размера содержимого
             backgroundColor: 'rgba(45, 55, 72, 0.95)',
             backdropFilter: 'blur(10px)',
             borderRadius: '22px',
