@@ -16,6 +16,7 @@ import { addMessages, addMessage, removeAllMessages } from '@/slices/messagesSli
 import { getLastMessage } from '@/services/getLastMessage';
 import { setNotWaitingMsg, setCloseWaitingAnimation } from '@/slices/waitingMsgSlice';
 import { putAwayActiveChat } from '@/slices/activeChatSlice';
+import ReactMarkdown from 'react-markdown';
 
 interface ChatWindowProps {
   onScrollDirectionChange?: (isScrollingDown: boolean) => void;
@@ -246,7 +247,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                             zIndex: 1,
                           }}
                         >
-                          {message.text}
+                          <ReactMarkdown>{message.text}</ReactMarkdown>
                         </Typography>
                       </Paper>
                     </ListItem>
