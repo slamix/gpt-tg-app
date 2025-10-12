@@ -14,9 +14,6 @@ interface GetMessagesResponse {
   count: number;
 }
 
-/**
- * Получает сообщения чата
- */
 export async function getMessages(
   chatId: number,
   offset: number = 0,

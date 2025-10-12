@@ -13,7 +13,6 @@ export const useRenameChat = () => {
     mutationFn: ({ chatId, newSubject }: RenameChatMutationParams) => 
       renameChat(chatId, newSubject),
     onSuccess: () => {
-      // Инвалидируем кэш чатов, чтобы обновить список
       queryClient.invalidateQueries({ queryKey: ['chats'] });
     },
   });

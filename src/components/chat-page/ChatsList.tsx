@@ -38,7 +38,6 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
 
   const queryClient = useQueryClient();
 
-  // Получаем чаты
   const {
     data,
     fetchNextPage,
@@ -50,12 +49,10 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
 
   const allChats = getAllChatsFromPages(data?.pages);
 
-  // Состояние меню: какой чат сейчас открыт
   const [menuAnchor, setMenuAnchor] = useState<{ id: number; el: HTMLElement } | null>(null);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // IntersectionObserver для бесконечного скролла
   useEffect(() => {
     if (!sentinelRef.current || !hasNextPage) return;
     const observer = new IntersectionObserver(
@@ -71,13 +68,10 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const handleOpen = (method: string, chat: Chat) => {
-    // Закрываем меню
     setMenuAnchor(null);
-    // Открываем модальное окно, передавая функцию закрытия сайдбара
     dispatch(setOpen({ method, chat, onCloseSidebar: onMobileClose }));
   }
 
-  // UI состояния загрузки и ошибки
   if (isLoading) {
     return (
       <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', p: 3 }}>
@@ -118,7 +112,6 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
       {/* Список */}
       <Box sx={{ flex: 1, overflow: 'auto' }}>
         {allChats.length === 0 ? (
-          // Пустое состояние
           <Box sx={{ 
             display: 'flex', 
             flexDirection: 'column',

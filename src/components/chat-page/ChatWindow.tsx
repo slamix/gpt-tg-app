@@ -7,13 +7,15 @@ import {
   ListItem,
   Paper,
   CircularProgress,
+  Button,
 } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/slices';
 import { getMessages } from '@/services/getMessages';
-import { addMessages, addMessage } from '@/slices/messagesSlice';
+import { addMessages, addMessage, removeAllMessages } from '@/slices/messagesSlice';
 import { getLastMessage } from '@/services/getLastMessage';
-import { setNotWaitingMsg } from '@/slices/waitingMsgSlice';
+import { setNotWaitingMsg, setCloseWaitingAnimation } from '@/slices/waitingMsgSlice';
+import { putAwayActiveChat } from '@/slices/activeChatSlice';
 
 interface ChatWindowProps {
   onScrollDirectionChange?: (isScrollingDown: boolean) => void;
@@ -25,6 +27,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const { activeChatId, isNewChat } = useSelector((state: RootState) => state.activeChat);
   const token = useSelector((state: RootState) => state.auth.token);
   const isWaitingMsg = useSelector((state: RootState) => state.waitingMsg.isWaitingMsg);
+  const openWaitingAnimation = useSelector((state: RootState) => state.waitingMsg.openWaitingAnimation);
   const [isLoading, setIsLoading] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -35,6 +38,13 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleNewChat = () => {
+    dispatch(putAwayActiveChat());
+    dispatch(removeAllMessages());
+  };
+
+  const isChatFull = messages.length >= 50;
+
   useEffect(() => {
     const fetchMessages = async () => {
       if (!activeChatId || isNewChat) return;
@@ -43,7 +53,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
         const { items } = await getMessages(activeChatId);
         dispatch(addMessages(items));
       } catch (error) {
-        // Ignore error
+        console.log('Ошибка получения сообщений:', error);
       } finally {
         setIsLoading(false);
       }
@@ -57,27 +67,26 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
       
       try {
         const res = await getLastMessage(activeChatId);
+        console.log('Получено сообщение от модели:', res);
         dispatch(addMessage(res));
       } catch (error) {
-        // Ignore error
+        console.error('Ошибка при получении сообщения:', error);
       } finally {
-        // Сбрасываем флаг ожидания после получения сообщения
         dispatch(setNotWaitingMsg());
+        dispatch(setCloseWaitingAnimation());
       }
     }
     fetchNewMessage();
   }, [isWaitingMsg, activeChatId, token, dispatch]);
 
-  // Автоматический скролл при изменении сообщений
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 || openWaitingAnimation) {
       setTimeout(() => {
         scrollToBottom();
       }, 100);
     }
-  }, [messages]);
+  }, [messages, openWaitingAnimation]);
 
-  // Отслеживание направления скролла
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !onScrollDirectionChange) return;
@@ -86,7 +95,6 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
       const scrollTop = container.scrollTop;
       const isScrollingDown = scrollTop > lastScrollTop.current;
       
-      // Обновляем только если направление изменилось и скролл больше порога
       if (Math.abs(scrollTop - lastScrollTop.current) > 5) {
         onScrollDirectionChange(isScrollingDown);
         lastScrollTop.current = scrollTop;
@@ -98,19 +106,20 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   }, [onScrollDirectionChange]);
 
   return (
-    <Box
-      ref={containerRef}
-      sx={{
-        flex: 1,
-        overflow: 'auto',
-        p: 1,
-        pt: '70px', // Отступ сверху для плавающего хедера
-        pb: '140px', // Отступ снизу для формы ввода
-        backgroundColor: 'background.default',
-        scrollBehavior: 'smooth',
-        position: 'relative',
-      }}
-    >
+    <>
+      <Box
+        ref={containerRef}
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+          p: 1,
+          pt: '70px',
+          pb: '140px',
+          backgroundColor: 'background.default',
+          scrollBehavior: 'smooth',
+          position: 'relative',
+        }}
+      >
       {/* Индикатор загрузки */}
       {isLoading && (
         <Box
@@ -178,7 +187,6 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
             {messages && Array.isArray(messages) && activeChatId !== null ? (
               <>
                 {messages.map((message, index) => {
-                  // Четный индекс (0, 2, 4...) = пользователь, нечетный = модель
                   const isUser = index % 2 === 0;
                   
                   return (
@@ -247,19 +255,245 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                     </ListItem>
                   );
                 })}
+                
+                {/* Анимация ожидания ответа */}
+                {openWaitingAnimation && (
+                  <ListItem
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      mb: 1,
+                      px: 0,
+                      animation: 'fadeInUp 0.4s ease-out',
+                      '@keyframes fadeInUp': {
+                        '0%': {
+                          opacity: 0,
+                          transform: 'translateY(20px)',
+                        },
+                        '100%': {
+                          opacity: 1,
+                          transform: 'translateY(0)',
+                        },
+                      },
+                    }}
+                  >
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 2.5,
+                        background: 'linear-gradient(135deg, #2D3748 0%, #1A202C 100%)',
+                        borderRadius: '20px 20px 20px 6px',
+                        maxWidth: '80%',
+                        border: '1px solid rgba(45, 55, 72, 0.5)',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        minWidth: '80px',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          gap: 0.8,
+                          alignItems: 'center',
+                        }}
+                      >
+                        {[0, 1, 2].map((index) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: '50%',
+                              backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                              animation: 'bounce 1.4s ease-in-out infinite',
+                              animationDelay: `${index * 0.2}s`,
+                              '@keyframes bounce': {
+                                '0%, 60%, 100%': {
+                                  transform: 'translateY(0)',
+                                  opacity: 0.4,
+                                },
+                                '30%': {
+                                  transform: 'translateY(-10px)',
+                                  opacity: 1,
+                                },
+                              },
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Paper>
+                  </ListItem>
+                )}
+                
                 {/* Невидимый элемент для автоскролла */}
                 <div ref={messagesEndRef} />
               </>
             ) : (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Чем могу помочь?
-                </Typography>
-              </Box>
+              <>
+                {/* Если нет сообщений, но есть анимация ожидания */}
+                {openWaitingAnimation ? (
+                  <>
+                    <ListItem
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'flex-start',
+                        mb: 1,
+                        px: 0,
+                        animation: 'fadeInUp 0.4s ease-out',
+                        '@keyframes fadeInUp': {
+                          '0%': {
+                            opacity: 0,
+                            transform: 'translateY(20px)',
+                          },
+                          '100%': {
+                            opacity: 1,
+                            transform: 'translateY(0)',
+                          },
+                        },
+                      }}
+                    >
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          p: 2.5,
+                          background: 'linear-gradient(135deg, #2D3748 0%, #1A202C 100%)',
+                          borderRadius: '20px 20px 20px 6px',
+                          maxWidth: '80%',
+                          border: '1px solid rgba(45, 55, 72, 0.5)',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          minWidth: '80px',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            gap: 0.8,
+                            alignItems: 'center',
+                          }}
+                        >
+                          {[0, 1, 2].map((index) => (
+                            <Box
+                              key={index}
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                                animation: 'bounce 1.4s ease-in-out infinite',
+                                animationDelay: `${index * 0.2}s`,
+                                '@keyframes bounce': {
+                                  '0%, 60%, 100%': {
+                                    transform: 'translateY(0)',
+                                    opacity: 0.4,
+                                  },
+                                  '30%': {
+                                    transform: 'translateY(-10px)',
+                                    opacity: 1,
+                                  },
+                                },
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      </Paper>
+                    </ListItem>
+                    <div ref={messagesEndRef} />
+                  </>
+                ) : (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Чем могу помочь?
+                    </Typography>
+                  </Box>
+                )}
+              </>
             )}
           </List>
         </Container>
       )}
-    </Box>
+      </Box>
+
+      {/* Уведомление о переполненности чата */}
+      {isChatFull && activeChatId !== null && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            backgroundColor: 'background.default',
+            borderTop: '1px solid',
+            borderTopColor: 'divider',
+            backdropFilter: 'blur(10px)',
+            background: 'linear-gradient(180deg, rgba(15, 20, 25, 0.95) 0%, rgba(15, 20, 25, 1) 100%)',
+          }}
+        >
+          <Container maxWidth="md" sx={{ px: { xs: 2, sm: 3 }, py: 1.5 }}>
+            <Paper
+              elevation={3}
+              sx={{
+                px: 2.5,
+                py: 1.5,
+                borderRadius: '28px',
+                background: 'linear-gradient(135deg, #E2E8F0 0%, #CBD5E0 100%)',
+                border: '1px solid rgba(203, 213, 224, 0.5)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 2,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: '#1A202C',
+                  fontSize: '0.9rem',
+                  lineHeight: 1.4,
+                }}
+              >
+                Чат переполнен. Начните новый чат для продолжения
+              </Typography>
+              <Button
+                onClick={handleNewChat}
+                variant="contained"
+                sx={{
+                  borderRadius: '18px',
+                  px: 2.5,
+                  py: 1,
+                  background: 'linear-gradient(135deg, #2D3748 0%, #1A202C 100%)',
+                  color: '#fff',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #4A5568 0%, #2D3748 100%)',
+                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.4)',
+                    transform: 'translateY(-1px)',
+                  },
+                  '&:active': {
+                    transform: 'translateY(0)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+              >
+                Новый чат
+              </Button>
+            </Paper>
+          </Container>
+        </Box>
+      )}
+    </>
   );
 }

@@ -7,7 +7,6 @@ export const useCreateChat = () => {
   return useMutation({
     mutationFn: () => createChat(),
     onSuccess: () => {
-      // Инвалидируем кэш чатов, чтобы обновить список
       queryClient.invalidateQueries({ queryKey: ['chats'] });
     },
   });

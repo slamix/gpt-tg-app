@@ -18,11 +18,9 @@ interface ChatHeaderProps {
 export function ChatHeader({ onMobileToggle, showChatTitle }: ChatHeaderProps) {
   const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
   
-  // Получаем список чатов для поиска активного чата
   const { data } = useGetChats(50);
   const allChats = getAllChatsFromPages(data?.pages);
   
-  // Находим активный чат по ID
   const activeChat = allChats.find(chat => chat.id === activeChatId);
   const chatTitle = activeChatId === null ? 'CFT Assistant' : activeChat?.chat_subject || 'CFT Assistant';
 
@@ -68,6 +66,7 @@ export function ChatHeader({ onMobileToggle, showChatTitle }: ChatHeaderProps) {
         <Box
           sx={{
             flex: 1,
+            minWidth: 0,
             backgroundColor: 'rgba(45, 55, 72, 0.95)',
             backdropFilter: 'blur(10px)',
             borderRadius: '22px',

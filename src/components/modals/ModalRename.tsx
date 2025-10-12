@@ -68,7 +68,6 @@ export function ModalRename() {
       });
       handleClose();
     } catch (error) {
-      // Ignore error
     }
   };
 

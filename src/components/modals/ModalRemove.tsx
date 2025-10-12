@@ -40,12 +40,10 @@ export function ModalRemove() {
       
       handleClose();
       
-      // Закрываем сайдбар после удаления
       if (onCloseSidebar) {
         onCloseSidebar();
       }
     } catch (error) {
-      // Ignore error
     }
   };
   

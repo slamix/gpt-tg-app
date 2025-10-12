@@ -3,7 +3,6 @@ import { setToken } from "../utils/tokenStorage";
 
 const API_URL = import.meta.env.VITE_API_HOST;
 
-// Создаём отдельный axios instance для auth запросов (без interceptor)
 const authAxios = axios.create({
   baseURL: API_URL,
   withCredentials: true,
@@ -17,7 +16,6 @@ export async function authorize(initData: string): Promise<string> {
   return access_token;
 }
 
-// Переменная для предотвращения множественных одновременных рефрешей
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
 
