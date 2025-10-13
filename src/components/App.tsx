@@ -12,7 +12,6 @@ import { ModalRemove } from "@/components/modals/ModalRemove";
 import { ModalRename } from "@/components/modals/ModalRename";
 import { getToken } from "@/utils/tokenStorage";
 
-// react-query клиент
 const queryClient = new QueryClient();
 
 export function App() {
@@ -21,7 +20,6 @@ export function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // 1️⃣ Инициализация Telegram SDK и окружения
   useEffect(() => {
     const initializeApp = async () => {
       try {

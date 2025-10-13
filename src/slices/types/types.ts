@@ -5,6 +5,8 @@ export interface Message {
   },
   text: string;
   hasFile?: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export interface Chat {

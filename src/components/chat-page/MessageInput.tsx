@@ -57,11 +57,15 @@ export function MessageInput() {
         const res = await createChatMutation.mutateAsync();
         dispatch(setNewActiveChat(res.id));
 
+        const date = new Date();
+
         const sentMessage = {
           chat: {
             id: activeChatId,
           },
           text: message.trim(),
+          created_at: date.toISOString(),
+          updated_at: date.toISOString(),
         }
         dispatch(addMessage(sentMessage));
         dispatch(setOpenWaitingAnimation());
@@ -85,11 +89,14 @@ export function MessageInput() {
         }
         
       } else {
+        const date = new Date();
         const sentMessage = {
           chat: {
             id: activeChatId,
           },
           text: message.trim(),
+          created_at: date.toISOString(),
+          updated_at: date.toISOString(),
         }
         dispatch(addMessage(sentMessage));
         dispatch(setOpenWaitingAnimation());

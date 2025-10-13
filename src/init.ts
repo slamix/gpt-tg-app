@@ -11,6 +11,7 @@ import {
   retrieveLaunchParams,
   emitEvent,
   miniApp,
+  viewport,
 } from '@telegram-apps/sdk-react';
 
 let isInitialized = false;
@@ -76,6 +77,9 @@ export async function init(options: {
   mountViewport.isAvailable() && mountViewport().then(() => {
     try {
       bindViewportCssVars();
+      if (viewport.expand.isAvailable()) {
+        viewport.expand();
+      }
     } catch (err) {
     }
   });

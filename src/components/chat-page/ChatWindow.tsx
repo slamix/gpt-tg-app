@@ -17,6 +17,7 @@ import { getLastMessage } from '@/services/getLastMessage';
 import { setNotWaitingMsg, setCloseWaitingAnimation } from '@/slices/waitingMsgSlice';
 import { putAwayActiveChat } from '@/slices/activeChatSlice';
 import ReactMarkdown from 'react-markdown';
+import formatTime from '@/utils/formatTime';
 
 interface ChatWindowProps {
   onScrollDirectionChange?: (isScrollingDown: boolean) => void;
@@ -186,6 +187,11 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
               <>
                 {messages.map((message, index) => {
                   const isUser = index % 2 === 0;
+
+                  const isEdited = message.updated_at && message.updated_at !== message.created_at;
+                  const displayTime = isEdited 
+                    ? `Изменено ${formatTime(message.updated_at)}` 
+                    : formatTime(message.created_at);
                   
                   return (
                     <ListItem
@@ -211,7 +217,8 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                       <Paper
                         elevation={0}
                         sx={{
-                          p: 2.5,
+                          px: 1.5,
+                          py: 0.5,
                           background: isUser 
                             ? 'linear-gradient(135deg, #4299E1 0%, #3182CE 100%)'
                             : 'linear-gradient(135deg, #2D3748 0%, #1A202C 100%)',
@@ -245,9 +252,25 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                             color: isUser ? '#ffffff' : 'text.primary',
                             position: 'relative',
                             zIndex: 1,
+                            mb: 0.3,
                           }}
                         >
                           <ReactMarkdown>{message.text}</ReactMarkdown>
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontSize: '0.7rem',
+                            color: isUser ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.5)',
+                            display: 'block',
+                            textAlign: isUser ? 'left' : 'right',
+                            position: 'relative',
+                            zIndex: 1,
+                            mt: 0.2,
+                            fontStyle: isEdited ? 'italic' : 'normal',
+                          }}
+                        >
+                          {displayTime}
                         </Typography>
                       </Paper>
                     </ListItem>
@@ -278,7 +301,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                     <Paper
                       elevation={0}
                       sx={{
-                        p: 2.5,
+                        p: 1.5,
                         background: 'linear-gradient(135deg, #2D3748 0%, #1A202C 100%)',
                         borderRadius: '20px 20px 20px 6px',
                         maxWidth: '80%',
@@ -355,7 +378,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                       <Paper
                         elevation={0}
                         sx={{
-                          p: 2.5,
+                          p: 1.5,
                           background: 'linear-gradient(135deg, #2D3748 0%, #1A202C 100%)',
                           borderRadius: '20px 20px 20px 6px',
                           maxWidth: '80%',
