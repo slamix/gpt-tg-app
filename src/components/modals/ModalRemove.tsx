@@ -12,6 +12,7 @@ import { Close as CloseIcon, DeleteOutline as DeleteIcon } from '@mui/icons-mate
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/slices';
 import { setClose } from '@/slices/modalSlice';
+import { removeAllMessages } from '@/slices/messagesSlice';
 import { useRemoveChat } from '@/hooks/useRemoveChat';
 import { setActiveChat } from '@/slices/activeChatSlice';
 
@@ -36,6 +37,7 @@ export function ModalRemove() {
       
       if (activeChatId === currentChat.id) {
         dispatch(setActiveChat(null));
+        dispatch(removeAllMessages())
       }
       
       handleClose();

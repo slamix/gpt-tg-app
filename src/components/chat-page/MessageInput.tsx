@@ -11,11 +11,12 @@ import {
   MenuItem,
   Badge,
 } from '@mui/material';
-import { Send as SendIcon, Add as AddIcon, Close as CloseIcon, InsertDriveFile as FileIcon, Image as ImageIcon, VideoLibrary as VideoIcon } from '@mui/icons-material';
+import { Send as SendIcon, Add as AddIcon, Close as CloseIcon, InsertDriveFile as FileIcon, Image as ImageIcon, VideoLibrary as VideoIcon, PhotoLibrary as GalleryIcon } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/slices';
 import { askChat } from '@/services/askChat';
-import { addMessage } from '@/slices/messagesSlice';
+import { addMessage, updateMessageId } from '@/slices/messagesSlice';
+import { setIsSending } from '@/slices/waitingMsgSlice';
 import { useCreateChat } from '@/hooks/useCreateChat';
 import { useRenameChat } from '@/hooks/useRenameChat';
 import { setNewActiveChat } from '@/slices/activeChatSlice';
@@ -52,7 +53,7 @@ export function MessageInput() {
     defaultValues: { message: '' },
     mode: 'onChange',
   });
-  const [isSending, setIsSending] = useState(false);
+  const isSending = useSelector((state: RootState) => state.waitingMsg.isSending);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileWithStatus[]>([]);
   const textFieldRef = useRef<HTMLDivElement>(null);
@@ -242,7 +243,7 @@ export function MessageInput() {
       }));
     setSelectedFiles([]);
     reset();
-    setIsSending(true);
+    dispatch(setIsSending(true));
     
     try {
       if (activeChatId === null) {
@@ -252,6 +253,7 @@ export function MessageInput() {
         const date = new Date();
 
         const sentMessage = {
+          id: 'customId',
           chat: {
             id: activeChatId,
           },
@@ -265,12 +267,13 @@ export function MessageInput() {
         dispatch(addMessage(sentMessage));
         dispatch(setOpenWaitingAnimation());
         
-        await askChat({ 
+        const messageId = await askChat({ 
           chatId: res.id, 
           text: message.trim(),
           attachments: attachments.length !== 0 ? attachments : undefined,
         });
 
+        dispatch(updateMessageId(messageId.id));
         dispatch(setWaitingMsg());
         
         const chatMetaData = await getChatById(res.id);
@@ -285,6 +288,7 @@ export function MessageInput() {
       } else {
         const date = new Date();
         const sentMessage = {
+          id: 'customId',
           chat: {
             id: activeChatId,
           },
@@ -298,18 +302,19 @@ export function MessageInput() {
         dispatch(addMessage(sentMessage));
         dispatch(setOpenWaitingAnimation());
         
-        await askChat({ 
+        const messageId = await askChat({ 
           chatId: activeChatId, 
           text: message.trim(),
           attachments: attachments.length !== 0 ? attachments : undefined,
         });
 
+        dispatch(updateMessageId(messageId.id));
         dispatch(setWaitingMsg());
       }
     } catch (error) {
       dispatch(setNotWaitingMsg());
     } finally {
-      setIsSending(false);
+      dispatch(setIsSending(false));
     }
   };
 
@@ -494,7 +499,7 @@ export function MessageInput() {
             >
               <IconButton
                 onClick={handleOpenMenu}
-                disabled={isSending || selectedFiles.length >= 5 || getTotalFileSize(selectedFiles) >= MAX_FILE_SIZE_BYTES}
+                disabled={selectedFiles.length >= 5 || getTotalFileSize(selectedFiles) >= MAX_FILE_SIZE_BYTES}
                 sx={{
                   width: 40,
                   height: 40,
@@ -539,22 +544,30 @@ export function MessageInput() {
                 onClick={handleFileClick}
                 sx={{
                   color: 'text.primary',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
                   '&:hover': {
                     backgroundColor: 'rgba(66, 153, 225, 0.15)',
                   },
                 }}
               >
+                <FileIcon sx={{ fontSize: '1.2rem' }} />
                 Файл
               </MenuItem>
               <MenuItem 
                 onClick={handleGalleryClick}
                 sx={{
                   color: 'text.primary',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.5,
                   '&:hover': {
                     backgroundColor: 'rgba(66, 153, 225, 0.15)',
                   },
                 }}
               >
+                <GalleryIcon sx={{ fontSize: '1.2rem' }} />
                 Галерея
               </MenuItem>
             </Menu>
@@ -571,7 +584,6 @@ export function MessageInput() {
                   handleSubmit(onSubmit)();
                 }
               }}
-              disabled={isSending}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: 'transparent',
@@ -620,7 +632,7 @@ export function MessageInput() {
               type="submit"
               variant="contained"
               disabled={
-                !messageValue?.trim() || 
+                !messageValue?.trim() ||
                 isSending || 
                 selectedFiles.some(f => f.status === 'uploading' || f.status === 'new')
               }

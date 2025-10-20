@@ -16,8 +16,11 @@ import {
   Image as ImageIcon, 
   VideoLibrary as VideoIcon,
   Download as DownloadIcon,
-  OpenInNew as OpenIcon
+  OpenInNew as OpenIcon,
+  ContentCopy as CopyIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
+import DoneIcon from '@mui/icons-material/Done';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/slices';
 import { getMessages } from '@/services/getMessages';
@@ -27,6 +30,7 @@ import { setNotWaitingMsg, setCloseWaitingAnimation } from '@/slices/waitingMsgS
 import { putAwayActiveChat } from '@/slices/activeChatSlice';
 import ReactMarkdown from 'react-markdown';
 import formatTime from '@/utils/formatTime';
+import { EditWindow } from '@/components/windows/EditWindow';
 
 interface ChatWindowProps {
   onScrollDirectionChange?: (isScrollingDown: boolean) => void;
@@ -40,6 +44,9 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const isWaitingMsg = useSelector((state: RootState) => state.waitingMsg.isWaitingMsg);
   const openWaitingAnimation = useSelector((state: RootState) => state.waitingMsg.openWaitingAnimation);
   const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editedText, setEditedText] = useState('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -85,6 +92,31 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const handleNewChat = () => {
     dispatch(putAwayActiveChat());
     dispatch(removeAllMessages());
+  };
+  
+  const handleCopyMessage = async ({ text }: { text: string }) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  const handleEditMessage = (messageId: number, text: string) => {
+    setEditingMessageId(messageId);
+    setEditedText(text);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditedText('');
+  };
+
+  const handleSaveEdit = () => {
+    setEditingMessageId(null);
+    setEditedText('');
   };
 
   const isChatFull = messages.length >= 50;
@@ -227,7 +259,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
           <List sx={{ py: 1 }}>
             {messages && Array.isArray(messages) && activeChatId !== null ? (
               <>
-                {messages.map((message) => {
+                {messages.map((message, index) => {
                   const isUser = message.role === 'user' ? true : false;
 
                   const isEdited = message.updated_at && message.updated_at !== message.created_at;
@@ -235,12 +267,16 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                     ? `Изменено ${formatTime(message.updated_at)}` 
                     : formatTime(message.created_at);
                   
+                  // Проверяем, редактируется ли это сообщение
+                  const isEditing = editingMessageId === message.id;
+
                   return (
                     <ListItem
-                      key={message.id}
+                      key={index}
                       sx={{
                         display: 'flex',
-                        justifyContent: isUser ? 'flex-end' : 'flex-start',
+                        flexDirection: 'column',
+                        alignItems: isUser ? 'flex-end' : 'flex-start',
                         mb: 1,
                         px: 0,
                         animation: 'fadeInUp 0.4s ease-out',
@@ -256,7 +292,18 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                         },
                       }}
                     >
-                      <Paper
+                      {/* Если сообщение редактируется, показываем EditWindow */}
+                      {isEditing ? (
+                        <EditWindow
+                          messageId={editingMessageId}
+                          onCancel={handleCancelEdit}
+                          onSave={handleSaveEdit}
+                          editedText={editedText}
+                          setEditedText={setEditedText}
+                        />
+                      ) : (
+                        <>
+                          <Paper
                         elevation={0}
                         sx={{
                           px: 1.5,
@@ -429,7 +476,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                             fontSize: '0.7rem',
                             color: isUser ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.5)',
                             display: 'block',
-                            textAlign: isUser ? 'left' : 'right',
+                            textAlign: isUser ? 'right' : 'left',
                             position: 'relative',
                             zIndex: 1,
                             mt: 0.2,
@@ -439,6 +486,59 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                           {displayTime}
                         </Typography>
                       </Paper>
+
+                      {/* Кнопки для сообщений пользователя */}
+                      {isUser && (
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            gap: 0.5,
+                            mt: 0.5,
+                            opacity: 0.6,
+                            transition: 'opacity 0.2s ease-in-out',
+                            '&:hover': {
+                              opacity: 1,
+                            },
+                          }}
+                        >
+                          <Tooltip title="Копировать">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleCopyMessage({ text: message.text })}
+                              sx={{
+                                width: 24,
+                                height: 24,
+                                color: 'rgba(255, 255, 255, 0.6)',
+                                '&:hover': {
+                                  color: 'rgba(66, 153, 225, 0.9)',
+                                  backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                                },
+                              }}
+                            >
+                              {copied ? <DoneIcon sx={{ fontSize: '0.85rem' }} /> : <CopyIcon sx={{ fontSize: '0.85rem' }} />}
+                            </IconButton>
+                          </Tooltip>
+                          {typeof message.id === 'number' && <Tooltip title="Редактировать">
+                            <IconButton
+                              size="small"
+                              onClick={() => typeof message.id === 'number' && handleEditMessage(message.id, message.text)}
+                              sx={{
+                                width: 24,
+                                height: 24,
+                                color: 'rgba(255, 255, 255, 0.6)',
+                                '&:hover': {
+                                  color: 'rgba(66, 153, 225, 0.9)',
+                                  backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                                },
+                              }}
+                            >
+                              <EditIcon sx={{ fontSize: '0.85rem' }} />
+                            </IconButton>
+                          </Tooltip>}
+                        </Box>
+                      )}
+                        </>
+                      )}
                     </ListItem>
                   );
                 })}

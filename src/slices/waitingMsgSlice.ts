@@ -3,11 +3,13 @@ import { createSlice } from "@reduxjs/toolkit";
 interface WaitingMsgState {
   isWaitingMsg: boolean;
   openWaitingAnimation: boolean;
+  isSending: boolean;
 }
 
 const initialState: WaitingMsgState = {
   isWaitingMsg: sessionStorage.getItem('isWaitingMsg') === 'true' ? true : false,
   openWaitingAnimation: false,
+  isSending: false,
 }
 
 const waitingMsgSlice = createSlice({
@@ -27,9 +29,12 @@ const waitingMsgSlice = createSlice({
     },
     setCloseWaitingAnimation: (state) => {
       state.openWaitingAnimation = false;
+    },
+    setIsSending: (state, { payload }) => {
+      state.isSending = payload;
     }
   }
 });
 
 export default waitingMsgSlice.reducer;
-export const { setWaitingMsg, setNotWaitingMsg, setOpenWaitingAnimation, setCloseWaitingAnimation } = waitingMsgSlice.actions;
+export const { setWaitingMsg, setNotWaitingMsg, setOpenWaitingAnimation, setCloseWaitingAnimation, setIsSending } = waitingMsgSlice.actions;

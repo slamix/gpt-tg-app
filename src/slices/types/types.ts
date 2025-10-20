@@ -1,11 +1,11 @@
 export interface Message {
-  id?: number;
+  id: number | 'customId';
   chat: {
     id: number;
   },
   text: string;
   role: string;
-  has_file?: boolean;
+  has_file: boolean;
   attachments?: {
     name: string;
     type: string;

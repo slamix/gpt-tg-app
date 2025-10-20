@@ -22,8 +22,29 @@ const messagesSlice = createSlice({
     removeAllMessages: (state) => {
       state.messages = [];
     },
+    updateMessageId: (state, { payload }) => {
+      state.messages = state.messages.map((message) => {
+        if (message.id === 'customId') {
+          message.id = payload;
+          return message;
+        }
+        return message;
+      });
+    },
+    redactMessage: (state, { payload }) => {
+      const { messageId, newText, updatedAt } = payload;
+      const messages: Message[] = [];
+      for (let message of state.messages) {
+        if (message.id === messageId) {
+          messages.push({ ...message, text: newText, updated_at: updatedAt });
+          break;
+        }
+        messages.push(message);
+      }
+      state.messages = messages;
+    }
   }
 });
 
-export const { addMessage, addMessages, removeAllMessages } = messagesSlice.actions;
+export const { addMessage, addMessages, removeAllMessages, redactMessage, updateMessageId } = messagesSlice.actions;
 export default messagesSlice.reducer;
