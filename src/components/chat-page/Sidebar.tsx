@@ -50,7 +50,7 @@ export function Sidebar( { mobileOpen, onMobileToggle }: SidebarProps ) {
         }}
       >
         <Typography variant="h6" color="text.primary" sx={{ fontWeight: 600 }}>
-          ChatGPT
+          CFT AI
         </Typography>
         {isMobile && (
           <IconButton onClick={handleMobileToggle} color="inherit">

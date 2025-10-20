@@ -4,7 +4,14 @@ export interface Message {
     id: number;
   },
   text: string;
-  hasFile?: boolean;
+  role: string;
+  has_file?: boolean;
+  attachments?: {
+    name: string;
+    type: string;
+    size: number;
+    url: string;
+  }[] | null;
   created_at: string;
   updated_at: string;
 };

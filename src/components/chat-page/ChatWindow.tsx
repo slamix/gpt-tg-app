@@ -8,7 +8,16 @@ import {
   Paper,
   CircularProgress,
   Button,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
+import { 
+  InsertDriveFile as FileIcon, 
+  Image as ImageIcon, 
+  VideoLibrary as VideoIcon,
+  Download as DownloadIcon,
+  OpenInNew as OpenIcon
+} from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/slices';
 import { getMessages } from '@/services/getMessages';
@@ -35,6 +44,39 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollTop = useRef(0);
+
+  const getFileIcon = (type: string) => {
+    if (type.startsWith('image/')) {
+      return <ImageIcon sx={{ fontSize: '1.2rem' }} />;
+    } else if (type.startsWith('video/')) {
+      return <VideoIcon sx={{ fontSize: '1.2rem' }} />;
+    } else {
+      return <FileIcon sx={{ fontSize: '1.2rem' }} />;
+    }
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleFileClick = (url: string) => {
+    if (!url) return;
+    window.open(url, '_blank');
+  };
+
+  const handleFileDownload = (url: string, name: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -185,8 +227,8 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
           <List sx={{ py: 1 }}>
             {messages && Array.isArray(messages) && activeChatId !== null ? (
               <>
-                {messages.map((message, index) => {
-                  const isUser = index % 2 === 0;
+                {messages.map((message) => {
+                  const isUser = message.role === 'user' ? true : false;
 
                   const isEdited = message.updated_at && message.updated_at !== message.created_at;
                   const displayTime = isEdited 
@@ -195,7 +237,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                   
                   return (
                     <ListItem
-                      key={index}
+                      key={message.id}
                       sx={{
                         display: 'flex',
                         justifyContent: isUser ? 'flex-end' : 'flex-start',
@@ -244,19 +286,143 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                           } : {},
                         }}
                       >
-                        <Typography
-                          variant="body1"
-                          sx={{ 
-                            lineHeight: 1.5,
-                            fontSize: '0.95rem',
-                            color: isUser ? '#ffffff' : 'text.primary',
-                            position: 'relative',
-                            zIndex: 1,
-                            mb: 0.3,
-                          }}
-                        >
-                          <ReactMarkdown>{message.text}</ReactMarkdown>
-                        </Typography>
+                        {/* Текст сообщения */}
+                        {message.text && (
+                          <Typography
+                            variant="body1"
+                            sx={{ 
+                              lineHeight: 1.5,
+                              fontSize: '0.95rem',
+                              color: isUser ? '#ffffff' : 'text.primary',
+                              position: 'relative',
+                              zIndex: 1,
+                              mb: message.has_file && message.attachments ? 1 : 0.3,
+                            }}
+                          >
+                            <ReactMarkdown>{message.text}</ReactMarkdown>
+                          </Typography>
+                        )}
+
+                        {/* Файлы */}
+                        {message.has_file && message.attachments && message.attachments.length > 0 && (
+                          <Box
+                            sx={{
+                              position: 'relative',
+                              zIndex: 1,
+                              mb: 0.3,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 0.5,
+                            }}
+                          >
+                            {message.attachments.map((attachment, index) => (
+                              <Paper
+                                key={index}
+                                elevation={0}
+                                sx={{
+                                  p: 1,
+                                  borderRadius: '12px',
+                                  background: isUser 
+                                    ? 'rgba(255, 255, 255, 0.15)' 
+                                    : 'rgba(66, 153, 225, 0.1)',
+                                  border: `1px solid ${
+                                    isUser 
+                                      ? 'rgba(255, 255, 255, 0.2)' 
+                                      : 'rgba(66, 153, 225, 0.2)'
+                                  }`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease-in-out',
+                                  '&:hover': {
+                                    background: isUser 
+                                      ? 'rgba(255, 255, 255, 0.2)' 
+                                      : 'rgba(66, 153, 225, 0.15)',
+                                    transform: 'translateY(-1px)',
+                                  },
+                                }}
+                                onClick={() => handleFileClick(attachment.url)}
+                              >
+                                <Box sx={{ 
+                                  color: isUser ? 'rgba(255, 255, 255, 0.9)' : 'rgba(66, 153, 225, 0.9)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                }}>
+                                  {getFileIcon(attachment.type)}
+                                </Box>
+                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontSize: '0.85rem',
+                                      color: isUser ? '#ffffff' : 'text.primary',
+                                      fontWeight: 500,
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {attachment.name}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      fontSize: '0.7rem',
+                                      color: isUser ? 'rgba(255, 255, 255, 0.7)' : 'rgba(66, 153, 225, 0.7)',
+                                    }}
+                                  >
+                                    {formatFileSize(attachment.size)}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                  <Tooltip title="Открыть">
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleFileClick(attachment.url);
+                                      }}
+                                      sx={{
+                                        width: 24,
+                                        height: 24,
+                                        color: isUser ? 'rgba(255, 255, 255, 0.8)' : 'rgba(66, 153, 225, 0.8)',
+                                        '&:hover': {
+                                          color: isUser ? '#ffffff' : 'rgba(66, 153, 225, 1)',
+                                          backgroundColor: isUser ? 'rgba(255, 255, 255, 0.1)' : 'rgba(66, 153, 225, 0.1)',
+                                        },
+                                      }}
+                                    >
+                                      <OpenIcon sx={{ fontSize: '0.9rem' }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Скачать">
+                                    <IconButton
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleFileDownload(attachment.url, attachment.name);
+                                      }}
+                                      sx={{
+                                        width: 24,
+                                        height: 24,
+                                        color: isUser ? 'rgba(255, 255, 255, 0.8)' : 'rgba(66, 153, 225, 0.8)',
+                                        '&:hover': {
+                                          color: isUser ? '#ffffff' : 'rgba(66, 153, 225, 1)',
+                                          backgroundColor: isUser ? 'rgba(255, 255, 255, 0.1)' : 'rgba(66, 153, 225, 0.1)',
+                                        },
+                                      }}
+                                    >
+                                      <DownloadIcon sx={{ fontSize: '0.9rem' }} />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              </Paper>
+                            ))}
+                          </Box>
+                        )}
+
+                        {/* Время сообщения */}
                         <Typography
                           variant="caption"
                           sx={{
@@ -309,6 +475,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
                         display: 'flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
                         gap: 1,
                         minWidth: '80px',
                       }}
@@ -318,6 +485,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                           display: 'flex',
                           gap: 0.8,
                           alignItems: 'center',
+                          justifyContent: 'center',
                         }}
                       >
                         {[0, 1, 2].map((index) => (
@@ -386,6 +554,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
                           display: 'flex',
                           alignItems: 'center',
+                          justifyContent: 'center',
                           gap: 1,
                           minWidth: '80px',
                         }}
@@ -395,6 +564,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                             display: 'flex',
                             gap: 0.8,
                             alignItems: 'center',
+                            justifyContent: 'center',
                           }}
                         >
                           {[0, 1, 2].map((index) => (

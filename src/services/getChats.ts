@@ -15,7 +15,7 @@ interface GetChatsParams {
 
 export const fetchChats = async (params: GetChatsParams = {}): Promise<GetChatsResponse> => {
   const { offset = 0, limit = 50 } = params;
-  const { data } = await api.get<GetChatsResponse>("user/chats", {
+  const { data } = await api.get<GetChatsResponse>("chats", {
     params: { offset, limit },
   });
   return data;
