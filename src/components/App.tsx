@@ -24,9 +24,9 @@ export function App() {
     const initializeApp = async () => {
       try {
         await init({
-          debug: true,
-          eruda: true,
-          mockForMacOS: true,
+          debug: false,
+          eruda: false,
+          mockForMacOS: false,
         });
         setIsInitialized(true);
       } catch (err: any) {
