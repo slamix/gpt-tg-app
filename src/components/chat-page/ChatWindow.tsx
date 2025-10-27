@@ -43,7 +43,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const isWaitingMsg = useSelector((state: RootState) => state.waitingMsg.isWaitingMsg);
   const openWaitingAnimation = useSelector((state: RootState) => state.waitingMsg.openWaitingAnimation);
   const [isLoading, setIsLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<number | string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editedText, setEditedText] = useState('');
   const [editingMessageAttachments, setEditingMessageAttachments] = useState<any[]>([]);
@@ -94,11 +94,11 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
     dispatch(removeAllMessages());
   };
   
-  const handleCopyMessage = async ({ text }: { text: string }) => {
+  const handleCopyMessage = async ({ text, messageId }: { text: string; messageId: number | string }) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 1500);
     } catch (e) {
       console.log(e);
     }
@@ -331,6 +331,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                           borderRadius: isUser ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
                           maxWidth: '80%',
                           wordBreak: 'break-word',
+                          overflowWrap: 'anywhere',
                           border: '1px solid',
                           borderColor: isUser ? 'rgba(66, 153, 225, 0.3)' : 'rgba(45, 55, 72, 0.5)',
                           boxShadow: isUser 
@@ -361,6 +362,33 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                               position: 'relative',
                               zIndex: 1,
                               mb: message.has_file && message.attachments ? 1 : 0.3,
+                              '& pre': {
+                                overflowX: 'auto',
+                                overflowY: 'hidden',
+                                maxWidth: '100%',
+                                padding: '8px',
+                                borderRadius: '4px',
+                                backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                                '&::-webkit-scrollbar': {
+                                  height: '6px',
+                                },
+                                '&::-webkit-scrollbar-track': {
+                                  backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                                  borderRadius: '3px',
+                                },
+                                '&::-webkit-scrollbar-thumb': {
+                                  backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                                  borderRadius: '3px',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+                                  },
+                                },
+                              },
+                              '& code': {
+                                whiteSpace: 'pre',
+                                wordBreak: 'normal',
+                                overflowWrap: 'normal',
+                              },
                             }}
                           >
                             <ReactMarkdown>{message.text}</ReactMarkdown>
@@ -504,38 +532,38 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                         </Typography>
                       </Paper>
 
-                      {/* Кнопки для сообщений пользователя */}
-                      {isUser && (
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            gap: 0.5,
-                            mt: 0.5,
-                            opacity: 0.6,
-                            transition: 'opacity 0.2s ease-in-out',
-                            '&:hover': {
-                              opacity: 1,
-                            },
-                          }}
-                        >
-                          <Tooltip title="Копировать">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleCopyMessage({ text: message.text })}
-                              sx={{
-                                width: 24,
-                                height: 24,
-                                color: 'rgba(255, 255, 255, 0.6)',
-                                '&:hover': {
-                                  color: 'rgba(66, 153, 225, 0.9)',
-                                  backgroundColor: 'rgba(66, 153, 225, 0.1)',
-                                },
-                              }}
-                            >
-                              {copied ? <DoneIcon sx={{ fontSize: '0.85rem' }} /> : <CopyIcon sx={{ fontSize: '0.85rem' }} />}
-                            </IconButton>
-                          </Tooltip>
-                          {typeof message.id === 'number' && <Tooltip title="Редактировать">
+                      {/* Кнопки копирования и редактирования */}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          gap: 0.5,
+                          mt: 0.5,
+                          opacity: 0.6,
+                          transition: 'opacity 0.2s ease-in-out',
+                          '&:hover': {
+                            opacity: 1,
+                          },
+                        }}
+                      >
+                        <Tooltip title="Копировать">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleCopyMessage({ text: message.text, messageId: message.id })}
+                            sx={{
+                              width: 24,
+                              height: 24,
+                              color: 'rgba(255, 255, 255, 0.6)',
+                              '&:hover': {
+                                color: 'rgba(66, 153, 225, 0.9)',
+                                backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                              },
+                            }}
+                          >
+                            {copiedMessageId === message.id ? <DoneIcon sx={{ fontSize: '0.85rem' }} /> : <CopyIcon sx={{ fontSize: '0.85rem' }} />}
+                          </IconButton>
+                        </Tooltip>
+                        {isUser && typeof message.id === 'number' && (
+                          <Tooltip title="Редактировать">
                             <IconButton
                               size="small"
                               onClick={() => typeof message.id === 'number' && handleEditMessage(message.id, message.text, message.attachments || [])}
@@ -551,9 +579,9 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                             >
                               <EditIcon sx={{ fontSize: '0.85rem' }} />
                             </IconButton>
-                          </Tooltip>}
-                        </Box>
-                      )}
+                          </Tooltip>
+                        )}
+                      </Box>
                         </>
                       )}
                     </ListItem>
