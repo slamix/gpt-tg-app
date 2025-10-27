@@ -75,7 +75,7 @@ export function ChatsList({ onMobileClose }: ChatsListProps) {
   if (isLoading) {
     return (
       <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', p: 3 }}>
-        <CircularProgress size={24} />
+        <CircularProgress color="secondary" size={24} />
       </Box>
     );
   }
