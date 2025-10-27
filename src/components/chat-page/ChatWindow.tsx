@@ -22,15 +22,15 @@ import {
 } from '@mui/icons-material';
 import DoneIcon from '@mui/icons-material/Done';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/slices';
+import { RootState, getState } from '@/slices';
 import { getMessages } from '@/services/getMessages';
 import { addMessages, addMessage, removeAllMessages } from '@/slices/messagesSlice';
 import { getLastMessage } from '@/services/getLastMessage';
-import { setNotWaitingMsg, setCloseWaitingAnimation, setIsSending } from '@/slices/waitingMsgSlice';
 import { putAwayActiveChat } from '@/slices/activeChatSlice';
 import ReactMarkdown from 'react-markdown';
 import formatTime from '@/utils/formatTime';
 import { EditWindow } from '@/components/windows/EditWindow';
+import { setChatStatus } from '@/slices/waitingMsgSlice';
 
 interface ChatWindowProps {
   onScrollDirectionChange?: (isScrollingDown: boolean) => void;
@@ -40,8 +40,12 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const dispatch = useDispatch();
   const messages = useSelector((state: RootState) => state.messages.messages);
   const { activeChatId, isNewChat } = useSelector((state: RootState) => state.activeChat);
-  const isWaitingMsg = useSelector((state: RootState) => state.waitingMsg.isWaitingMsg);
-  const openWaitingAnimation = useSelector((state: RootState) => state.waitingMsg.openWaitingAnimation);
+  
+  const chatStatus = useSelector((state: RootState) => {
+    if (activeChatId === null) return null;
+    return state.waitingMsg.chatsStatus[activeChatId] || null;
+  });
+  
   const [isLoading, setIsLoading] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<number | string | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
@@ -131,51 +135,81 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
       try {
         const { items } = await getMessages(activeChatId);
         dispatch(addMessages(items));
+        
+        if (items.length > 0) {
+          const lastMsg = items[items.length - 1];
+          if (lastMsg.role === 'assistant') {
+            dispatch(setChatStatus({ chatId: activeChatId, isWaitingMsg: false, status: 'gotMsg' }));
+          } else if (lastMsg.role === 'user') {
+            const state = getState();
+            const currentStatus = state.waitingMsg?.chatsStatus?.[activeChatId]?.status;
+            
+            if (currentStatus !== 'polling') {
+              dispatch(setChatStatus({ chatId: activeChatId, isWaitingMsg: true, status: 'polling' }));
+            }
+          }
+        }
       } catch (error) {
       } finally {
         setIsLoading(false);
       }
     }
     fetchMessages();
-  }, [activeChatId, dispatch]);
-
+  }, [activeChatId, isNewChat, dispatch]);
 
   useEffect(() => {
-    if (!isWaitingMsg || !activeChatId) return;
-    const lastMessageInChat = messages[messages.length - 1];
-    if (!lastMessageInChat || lastMessageInChat.role === 'assistant') return;
-
+    if (!activeChatId) return;
+    
+    const currentChatStatus = chatStatus?.status;
+    
+    if (currentChatStatus !== 'polling') {
+      return;
+    }
+    
+    const pollingChatId = activeChatId;
+    
     let timeoutId: any;
-
+    let isActive = true;
+    
     const poll = async () => {
+      if (!isActive) return;
+      
       try {
-        const res = await getLastMessage(activeChatId);
+        const res = await getLastMessage(pollingChatId);
+        
+        if (!isActive) return;
+        
         if (res.role === "assistant") {
           dispatch(addMessage(res));
-          dispatch(setNotWaitingMsg());
-          dispatch(setCloseWaitingAnimation());
-          dispatch(setIsSending(false));
+          dispatch(setChatStatus({ chatId: pollingChatId, isWaitingMsg: false, status: 'gotMsg' }));
           return;
         }
-
-        timeoutId = setTimeout(poll, 1000);
+        
+        if (isActive) {
+          timeoutId = setTimeout(poll, 1000);
+        }
       } catch (error) {
-        timeoutId = setTimeout(poll, 1000);
+        if (isActive) {
+          timeoutId = setTimeout(poll, 1000);
+        }
       }
     };
-
+    
     poll();
 
-    return () => clearTimeout(timeoutId);
-  }, [isWaitingMsg, activeChatId, messages, dispatch]);
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
+  }, [activeChatId, chatStatus?.status, dispatch]);
 
   useEffect(() => {
-    if (messages.length > 0 || openWaitingAnimation) {
+    if (messages.length > 0 || chatStatus?.isWaitingMsg) {
       setTimeout(() => {
         scrollToBottom();
       }, 100);
     }
-  }, [messages, openWaitingAnimation]);
+  }, [messages, chatStatus?.isWaitingMsg]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -589,7 +623,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                 })}
                 
                 {/* Анимация ожидания ответа */}
-                {openWaitingAnimation && (
+                {chatStatus?.isWaitingMsg && (
                   <ListItem
                     sx={{
                       display: 'flex',
@@ -667,7 +701,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
             ) : (
               <>
                 {/* Если нет сообщений, но есть анимация ожидания */}
-                {openWaitingAnimation ? (
+                {chatStatus?.isWaitingMsg ? (
                   <>
                     <ListItem
                       sx={{

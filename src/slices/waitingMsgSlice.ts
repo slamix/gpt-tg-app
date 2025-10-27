@@ -1,40 +1,35 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-interface WaitingMsgState {
-  isWaitingMsg: boolean;
-  openWaitingAnimation: boolean;
-  isSending: boolean;
+type PollingStatus = 'polling' | 'gotMsg';
+
+interface ChatStatus {
+    isWaitingMsg: boolean; // for disable buttons and open animation of waiting
+    status: PollingStatus; // polling - looking for response of assistant, gotMsg - got response of assistant
 }
 
-const initialState: WaitingMsgState = {
-  isWaitingMsg: sessionStorage.getItem('isWaitingMsg') === 'true' ? true : false,
-  openWaitingAnimation: false,
-  isSending: false,
+// TODO: work with animation of waiting, wanna to open it earlier
+
+interface stateInterface {
+    chatsStatus: Record<number, ChatStatus>
+}
+
+const initialState: stateInterface = {
+    chatsStatus: {},
 }
 
 const waitingMsgSlice = createSlice({
-  name: 'waitingMsg',
+  name: 'testWait',
   initialState,
   reducers: {
-    setWaitingMsg: (state) => {
-      state.isWaitingMsg = true;
-      sessionStorage.setItem('isWaitingMsg', 'true');
+    setChatStatus: (state, { payload }) => {
+      const { chatId, isWaitingMsg, status } = payload;
+      state.chatsStatus[chatId] = {
+        isWaitingMsg,
+        status,
+      }
     },
-    setNotWaitingMsg: (state) => {
-      state.isWaitingMsg = false;
-      sessionStorage.setItem('isWaitingMsg', 'false');
-    },
-    setOpenWaitingAnimation: (state) => {
-      state.openWaitingAnimation = true;
-    },
-    setCloseWaitingAnimation: (state) => {
-      state.openWaitingAnimation = false;
-    },
-    setIsSending: (state, { payload }) => {
-      state.isSending = payload;
-    }
   }
 });
 
 export default waitingMsgSlice.reducer;
-export const { setWaitingMsg, setNotWaitingMsg, setOpenWaitingAnimation, setCloseWaitingAnimation, setIsSending } = waitingMsgSlice.actions;
+export const { setChatStatus } = waitingMsgSlice.actions;

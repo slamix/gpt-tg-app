@@ -16,14 +16,13 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/slices';
 import { askChat } from '@/services/askChat';
 import { addMessage, updateMessageId } from '@/slices/messagesSlice';
-import { setIsSending } from '@/slices/waitingMsgSlice';
 import { useCreateChat } from '@/hooks/useCreateChat';
 import { useRenameChat } from '@/hooks/useRenameChat';
 import { setNewActiveChat } from '@/slices/activeChatSlice';
-import { setWaitingMsg, setNotWaitingMsg, setOpenWaitingAnimation } from '@/slices/waitingMsgSlice';
 import { getChatById } from '@/services/getChatById';
 import { uploadFiles } from '@/services/uploadFiles';
 import { removeFile } from '@/services/removeFiles';
+import { setChatStatus } from '@/slices/waitingMsgSlice';
 
 interface FormData {
   message: string;
@@ -53,7 +52,6 @@ export function MessageInput() {
     defaultValues: { message: '' },
     mode: 'onChange',
   });
-  const isSending = useSelector((state: RootState) => state.waitingMsg.isSending);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileWithStatus[]>([]);
   const textFieldRef = useRef<HTMLDivElement>(null);
@@ -61,6 +59,11 @@ export function MessageInput() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
   const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
+  
+  const chatStatus = useSelector((state: RootState) => {
+    if (activeChatId === null) return null;
+    return state.waitingMsg.chatsStatus[activeChatId] || null;
+  });
   
   const messageValue = watch('message');
   
@@ -243,7 +246,6 @@ export function MessageInput() {
       }));
     setSelectedFiles([]);
     reset();
-    dispatch(setIsSending(true));
     
     try {
       if (activeChatId === null) {
@@ -255,7 +257,7 @@ export function MessageInput() {
         const sentMessage = {
           id: 'customId',
           chat: {
-            id: activeChatId,
+            id: res.id,
           },
           text: message.trim(),
           role: 'user',
@@ -265,7 +267,6 @@ export function MessageInput() {
           attachments: attachments.length !== 0 ? attachments : undefined,
         }
         dispatch(addMessage(sentMessage));
-        dispatch(setOpenWaitingAnimation());
         
         const messageId = await askChat({ 
           chatId: res.id, 
@@ -273,8 +274,8 @@ export function MessageInput() {
           attachments: attachments.length !== 0 ? attachments : undefined,
         });
 
+        dispatch(setChatStatus({ chatId: res.id, isWaitingMsg: true, status: 'polling' }));
         dispatch(updateMessageId(messageId.id));
-        dispatch(setWaitingMsg());
         
         const chatMetaData = await getChatById(res.id);
         
@@ -300,7 +301,6 @@ export function MessageInput() {
           updated_at: date.toISOString(),
         }
         dispatch(addMessage(sentMessage));
-        dispatch(setOpenWaitingAnimation());
         
         const messageId = await askChat({ 
           chatId: activeChatId, 
@@ -308,11 +308,11 @@ export function MessageInput() {
           attachments: attachments.length !== 0 ? attachments : undefined,
         });
 
+        dispatch(setChatStatus({ chatId: activeChatId, isWaitingMsg: true, status: 'polling' }));
+
         dispatch(updateMessageId(messageId.id));
-        dispatch(setWaitingMsg());
       }
     } catch (error) {
-      dispatch(setNotWaitingMsg());
     }
   };
 
@@ -631,7 +631,7 @@ export function MessageInput() {
               variant="contained"
               disabled={
                 !messageValue?.trim() ||
-                isSending || 
+                chatStatus?.isWaitingMsg || 
                 selectedFiles.some(f => f.status === 'uploading' || f.status === 'new')
               }
               sx={{

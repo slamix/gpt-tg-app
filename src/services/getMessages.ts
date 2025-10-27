@@ -1,11 +1,5 @@
 import { api } from "@/api/axiosInstance";
-
-export interface Message {
-  id: number;
-  text: string;
-  isUser: boolean;
-  timestamp?: string;
-}
+import type { Message } from "@/slices/types/types";
 
 interface GetMessagesResponse {
   items: Message[];

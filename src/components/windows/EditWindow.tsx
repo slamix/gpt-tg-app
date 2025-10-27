@@ -10,12 +10,13 @@ import {
   Badge,
 } from '@mui/material';
 import { Add as AddIcon, Close as CloseIcon, InsertDriveFile as FileIcon, Image as ImageIcon, VideoLibrary as VideoIcon, PhotoLibrary as GalleryIcon } from '@mui/icons-material';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { editMessage } from '@/services/editMessage';
 import { redactMessage } from '@/slices/messagesSlice';
-import { setIsSending, setOpenWaitingAnimation, setWaitingMsg } from '@/slices/waitingMsgSlice';
 import { uploadFiles } from '@/services/uploadFiles';
 import { removeFile } from '@/services/removeFiles';
+import { setChatStatus } from '@/slices/waitingMsgSlice';
+import { RootState } from '@/slices';
 
 interface UploadedFileData {
   id: number;
@@ -58,6 +59,7 @@ export function EditWindow({ messageId, onCancel, onSave, editedText, setEditedT
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
+  const { activeChatId } = useSelector((state: RootState) => state.activeChat);
   
   const [existingFiles, setExistingFiles] = useState<ExistingAttachment[]>(initialAttachments);
   const [newFiles, setNewFiles] = useState<FileWithStatus[]>([]);
@@ -244,14 +246,11 @@ export function EditWindow({ messageId, onCancel, onSave, editedText, setEditedT
       const now = new Date();
       onSave();
       dispatch(redactMessage({ messageId, newText: editedText, updatedAt: now.toISOString(), attachments: allAttachments }));
-      dispatch(setIsSending(true));
-      dispatch(setOpenWaitingAnimation());
       await editMessage({ messageId, newText: editedText, attachments: allAttachments });
-      dispatch(setWaitingMsg());
+      dispatch(setChatStatus({ chatId: activeChatId, isWaitingMsg: true, status: 'polling' }));
     } catch (err) {
       console.log('Ошибка при редактировании сообщения');
     } finally {
-      dispatch(setIsSending(false));
     }
   };
 
