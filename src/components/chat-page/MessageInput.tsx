@@ -313,8 +313,6 @@ export function MessageInput() {
       }
     } catch (error) {
       dispatch(setNotWaitingMsg());
-    } finally {
-      dispatch(setIsSending(false));
     }
   };
 

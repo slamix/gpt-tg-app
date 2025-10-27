@@ -4,6 +4,7 @@ interface AskChatParams {
   chatId: number;
   text: string;
   attachments?: {
+    id: number;
     name: string;
     type: string;
     size: number;

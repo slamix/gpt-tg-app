@@ -32,11 +32,11 @@ const messagesSlice = createSlice({
       });
     },
     redactMessage: (state, { payload }) => {
-      const { messageId, newText, updatedAt } = payload;
+      const { messageId, newText, updatedAt, attachments } = payload;
       const messages: Message[] = [];
       for (let message of state.messages) {
         if (message.id === messageId) {
-          messages.push({ ...message, text: newText, updated_at: updatedAt });
+          messages.push({ ...message, text: newText, updated_at: updatedAt, attachments: attachments });
           break;
         }
         messages.push(message);

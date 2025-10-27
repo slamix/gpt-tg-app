@@ -26,7 +26,7 @@ import { RootState } from '@/slices';
 import { getMessages } from '@/services/getMessages';
 import { addMessages, addMessage, removeAllMessages } from '@/slices/messagesSlice';
 import { getLastMessage } from '@/services/getLastMessage';
-import { setNotWaitingMsg, setCloseWaitingAnimation } from '@/slices/waitingMsgSlice';
+import { setNotWaitingMsg, setCloseWaitingAnimation, setIsSending } from '@/slices/waitingMsgSlice';
 import { putAwayActiveChat } from '@/slices/activeChatSlice';
 import ReactMarkdown from 'react-markdown';
 import formatTime from '@/utils/formatTime';
@@ -40,13 +40,13 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const dispatch = useDispatch();
   const messages = useSelector((state: RootState) => state.messages.messages);
   const { activeChatId, isNewChat } = useSelector((state: RootState) => state.activeChat);
-  const token = useSelector((state: RootState) => state.auth.token);
   const isWaitingMsg = useSelector((state: RootState) => state.waitingMsg.isWaitingMsg);
   const openWaitingAnimation = useSelector((state: RootState) => state.waitingMsg.openWaitingAnimation);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editedText, setEditedText] = useState('');
+  const [editingMessageAttachments, setEditingMessageAttachments] = useState<any[]>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,19 +104,22 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
     }
   }
 
-  const handleEditMessage = (messageId: number, text: string) => {
+  const handleEditMessage = (messageId: number, text: string, attachments?: any[]) => {
     setEditingMessageId(messageId);
     setEditedText(text);
+    setEditingMessageAttachments(attachments || []);
   };
 
   const handleCancelEdit = () => {
     setEditingMessageId(null);
     setEditedText('');
+    setEditingMessageAttachments([]);
   };
 
   const handleSaveEdit = () => {
     setEditingMessageId(null);
     setEditedText('');
+    setEditingMessageAttachments([]);
   };
 
   const isChatFull = messages.length >= 50;
@@ -136,21 +139,35 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
     fetchMessages();
   }, [activeChatId, dispatch]);
 
+
   useEffect(() => {
-    const fetchNewMessage = async () => {
-      if (!isWaitingMsg || !activeChatId) return;
-      
+    if (!isWaitingMsg || !activeChatId) return;
+    const lastMessageInChat = messages[messages.length - 1];
+    if (!lastMessageInChat || lastMessageInChat.role === 'assistant') return;
+
+    let timeoutId: any;
+
+    const poll = async () => {
       try {
         const res = await getLastMessage(activeChatId);
-        dispatch(addMessage(res));
+        if (res.role === "assistant") {
+          dispatch(addMessage(res));
+          dispatch(setNotWaitingMsg());
+          dispatch(setCloseWaitingAnimation());
+          dispatch(setIsSending(false));
+          return;
+        }
+
+        timeoutId = setTimeout(poll, 1000);
       } catch (error) {
-      } finally {
-        dispatch(setNotWaitingMsg());
-        dispatch(setCloseWaitingAnimation());
+        timeoutId = setTimeout(poll, 1000);
       }
-    }
-    fetchNewMessage();
-  }, [isWaitingMsg, activeChatId, token, dispatch]);
+    };
+
+    poll();
+
+    return () => clearTimeout(timeoutId);
+  }, [isWaitingMsg, activeChatId, messages, dispatch]);
 
   useEffect(() => {
     if (messages.length > 0 || openWaitingAnimation) {
@@ -267,7 +284,6 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                     ? `Изменено ${formatTime(message.updated_at)}` 
                     : formatTime(message.created_at);
                   
-                  // Проверяем, редактируется ли это сообщение
                   const isEditing = editingMessageId === message.id;
 
                   return (
@@ -293,13 +309,14 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                       }}
                     >
                       {/* Если сообщение редактируется, показываем EditWindow */}
-                      {isEditing ? (
+                      {isEditing && editingMessageId !== null ? (
                         <EditWindow
                           messageId={editingMessageId}
                           onCancel={handleCancelEdit}
                           onSave={handleSaveEdit}
                           editedText={editedText}
                           setEditedText={setEditedText}
+                          initialAttachments={editingMessageAttachments}
                         />
                       ) : (
                         <>
@@ -521,7 +538,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
                           {typeof message.id === 'number' && <Tooltip title="Редактировать">
                             <IconButton
                               size="small"
-                              onClick={() => typeof message.id === 'number' && handleEditMessage(message.id, message.text)}
+                              onClick={() => typeof message.id === 'number' && handleEditMessage(message.id, message.text, message.attachments || [])}
                               sx={{
                                 width: 24,
                                 height: 24,
