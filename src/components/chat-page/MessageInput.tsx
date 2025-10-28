@@ -74,44 +74,120 @@ export function MessageInput() {
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
-    if (!tg) return;
-
-    tg.postEvent('web_app_ready');
-    tg.expand();
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    console.log('🔍 [Keyboard] Режим:', {
+      hasTelegramAPI: !!tg,
+      isMobile,
+      hasVisualViewport: !!window.visualViewport,
+    });
 
     let rafId: number | null = null;
     let lastOffset = 0;
 
-    const handleViewportChange = (data: any) => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-
-      rafId = requestAnimationFrame(() => {
-        const stable = tg.viewportStableHeight ?? window.innerHeight;
-        const newOffset = Math.max(0, stable - data.viewportHeight);
-        
-        if (Math.abs(newOffset - lastOffset) > 1) {
-          lastOffset = newOffset;
-          setKeyboardOffset(newOffset);
-        }
+    // Попытка использовать Telegram WebApp API
+    if (tg) {
+      console.log('📱 [Keyboard] Используем Telegram WebApp API');
+      console.log('📱 [Keyboard] Начальные значения:', {
+        viewportHeight: tg.viewportHeight,
+        viewportStableHeight: tg.viewportStableHeight,
+        windowInnerHeight: window.innerHeight,
+        isExpanded: tg.isExpanded,
       });
-    };
 
-    tg.onEvent('viewportChanged', handleViewportChange);
+      tg.postEvent('web_app_ready');
+      tg.expand();
 
-    setTimeout(() => {
-      if (tg.viewportHeight && tg.viewportStableHeight) {
-        handleViewportChange({ viewportHeight: tg.viewportHeight });
-      }
-    }, 50);
+      const handleViewportChange = (data: any) => {
+        console.log('📐 [Keyboard] Telegram viewportChanged:', data);
 
-    return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-      tg.offEvent('viewportChanged', handleViewportChange);
-    };
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+
+        rafId = requestAnimationFrame(() => {
+          const stable = tg.viewportStableHeight ?? window.innerHeight;
+          const newOffset = Math.max(0, stable - data.viewportHeight);
+          
+          console.log('🧮 [Keyboard] Telegram вычисления:', {
+            stable,
+            viewportHeight: data.viewportHeight,
+            newOffset,
+            lastOffset,
+          });
+          
+          if (Math.abs(newOffset - lastOffset) > 1) {
+            console.log('🚀 [Keyboard] Обновляем offset:', newOffset);
+            lastOffset = newOffset;
+            setKeyboardOffset(newOffset);
+          }
+        });
+      };
+
+      tg.onEvent('viewportChanged', handleViewportChange);
+
+      setTimeout(() => {
+        if (tg.viewportHeight && tg.viewportStableHeight) {
+          handleViewportChange({ viewportHeight: tg.viewportHeight });
+        }
+      }, 50);
+
+      return () => {
+        console.log('🧹 [Keyboard] Telegram cleanup');
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        tg.offEvent('viewportChanged', handleViewportChange);
+      };
+    }
+
+    // Fallback на window.visualViewport для обычных браузеров и разработки
+    if (isMobile && window.visualViewport) {
+      console.log('📱 [Keyboard] Используем window.visualViewport (fallback)');
+
+      const handleResize = () => {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+
+        rafId = requestAnimationFrame(() => {
+          if (window.visualViewport) {
+            const viewportHeight = window.visualViewport.height;
+            const windowHeight = window.innerHeight;
+            const newOffset = Math.max(0, windowHeight - viewportHeight);
+
+            console.log('🧮 [Keyboard] VisualViewport вычисления:', {
+              windowHeight,
+              viewportHeight,
+              newOffset,
+              lastOffset,
+            });
+
+            if (Math.abs(newOffset - lastOffset) > 1) {
+              console.log('🚀 [Keyboard] Обновляем offset:', newOffset);
+              lastOffset = newOffset;
+              setKeyboardOffset(newOffset);
+            }
+          }
+        });
+      };
+
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
+
+      return () => {
+        console.log('🧹 [Keyboard] VisualViewport cleanup');
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        if (window.visualViewport) {
+          window.visualViewport.removeEventListener('resize', handleResize);
+          window.visualViewport.removeEventListener('scroll', handleResize);
+        }
+      };
+    }
+
+    console.log('ℹ️ [Keyboard] Клавиатура не обрабатывается (десктоп или API недоступен)');
   }, []);
 
   useEffect(() => {
@@ -330,6 +406,8 @@ export function MessageInput() {
       console.error(error);
     }
   };
+
+  console.log('🎨 [Keyboard] Рендер с offset:', keyboardOffset);
 
   return (
     <Box
