@@ -56,7 +56,6 @@ export function MessageInput() {
   });
 
   const [selectedFiles, setSelectedFiles] = useState<FileWithStatus[]>([]);
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const textFieldRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
@@ -71,48 +70,6 @@ export function MessageInput() {
 
   const messageValue = watch('message');
   const createChatMutation = useCreateChat();
-
-  useEffect(() => {
-    const tg = (window as any).Telegram?.WebApp;
-    if (!tg) return;
-
-    tg.postEvent('web_app_ready');
-    tg.expand();
-
-    let rafId: number | null = null;
-    let lastOffset = 0;
-
-    const handleViewportChange = (data: any) => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-
-      rafId = requestAnimationFrame(() => {
-        const stable = tg.viewportStableHeight ?? window.innerHeight;
-        const newOffset = Math.max(0, stable - data.viewportHeight);
-        
-        if (Math.abs(newOffset - lastOffset) > 1) {
-          lastOffset = newOffset;
-          setKeyboardOffset(newOffset);
-        }
-      });
-    };
-
-    tg.onEvent('viewportChanged', handleViewportChange);
-
-    setTimeout(() => {
-      if (tg.viewportHeight && tg.viewportStableHeight) {
-        handleViewportChange({ viewportHeight: tg.viewportHeight });
-      }
-    }, 50);
-
-    return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-      tg.offEvent('viewportChanged', handleViewportChange);
-    };
-  }, []);
 
   useEffect(() => {
     const filesToUpload = selectedFiles.filter((f) => f.status === 'new');
@@ -323,15 +280,9 @@ export function MessageInput() {
   return (
     <Box
       sx={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 10,
-        pointerEvents: 'none',
-        transform: `translateY(-${keyboardOffset}px)`,
-        transition: 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-        willChange: keyboardOffset > 0 ? 'transform' : 'auto',
+        mt: 'auto',              // прижимаем футер к низу flex-контейнера
+        width: '100%',
+        zIndex: 10,              // можно оставить, если нужно перекрывать фон
         '& > *': { pointerEvents: 'auto' },
       }}
     >
