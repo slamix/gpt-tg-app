@@ -8,15 +8,20 @@ import {
   Paper,
   IconButton,
 } from '@mui/material';
-import { Send as SendIcon, Add as AddIcon, Close as CloseIcon, InsertDriveFile as FileIcon, Image as ImageIcon, VideoLibrary as VideoIcon } from '@mui/icons-material';
+import {
+  Send as SendIcon,
+  Add as AddIcon,
+  Close as CloseIcon,
+  InsertDriveFile as FileIcon,
+  Image as ImageIcon,
+  VideoLibrary as VideoIcon,
+} from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/slices';
 import { askChat } from '@/services/askChat';
 import { addMessage, updateMessageId } from '@/slices/messagesSlice';
 import { useCreateChat } from '@/hooks/useCreateChat';
-import { useRenameChat } from '@/hooks/useRenameChat';
 import { setNewActiveChat } from '@/slices/activeChatSlice';
-import { getChatById } from '@/services/getChatById';
 import { uploadFiles } from '@/services/uploadFiles';
 import { removeFile } from '@/services/removeFiles';
 import { setChatStatus } from '@/slices/waitingMsgSlice';
@@ -49,83 +54,100 @@ export function MessageInput() {
     defaultValues: { message: '' },
     mode: 'onChange',
   });
+
   const [selectedFiles, setSelectedFiles] = useState<FileWithStatus[]>([]);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const textFieldRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
-  const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
-  
+  const activeChatId = useSelector(
+    (state: RootState) => state.activeChat.activeChatId
+  );
+
   const chatStatus = useSelector((state: RootState) => {
     if (activeChatId === null) return null;
     return state.waitingMsg.chatsStatus[activeChatId] || null;
   });
-  
+
   const messageValue = watch('message');
-  
   const createChatMutation = useCreateChat();
-  const renameChatMutation = useRenameChat();
 
   useEffect(() => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (!isMobile) return;
+    const tg = (window as any).Telegram?.WebApp;
+    if (!tg) return;
 
-    const handleResize = () => {
-      if (window.visualViewport) {
-        const viewportHeight = window.visualViewport.height;
-        const windowHeight = window.innerHeight;
-        const offset = windowHeight - viewportHeight;
-        setKeyboardOffset(offset > 0 ? offset : 0);
+    tg.postEvent('web_app_ready');
+    tg.expand();
+
+    let rafId: number | null = null;
+    let lastOffset = 0;
+
+    const handleViewportChange = (data: any) => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
       }
+
+      rafId = requestAnimationFrame(() => {
+        const stable = tg.viewportStableHeight ?? window.innerHeight;
+        const newOffset = Math.max(0, stable - data.viewportHeight);
+        
+        if (Math.abs(newOffset - lastOffset) > 1) {
+          lastOffset = newOffset;
+          setKeyboardOffset(newOffset);
+        }
+      });
     };
 
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-      window.visualViewport.addEventListener('scroll', handleResize);
-    }
+    tg.onEvent('viewportChanged', handleViewportChange);
+
+    setTimeout(() => {
+      if (tg.viewportHeight && tg.viewportStableHeight) {
+        handleViewportChange({ viewportHeight: tg.viewportHeight });
+      }
+    }, 50);
 
     return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
-        window.visualViewport.removeEventListener('scroll', handleResize);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
       }
+      tg.offEvent('viewportChanged', handleViewportChange);
     };
   }, []);
-  
+
   useEffect(() => {
     if (textFieldRef.current) {
-      const textarea = textFieldRef.current.querySelector('textarea');
-      if (textarea) {
-        textarea.scrollTop = textarea.scrollHeight;
-      }
+      requestAnimationFrame(() => {
+        const textarea = textFieldRef.current!.querySelector('textarea');
+        if (textarea) {
+          textarea.scrollTop = textarea.scrollHeight;
+        }
+      });
     }
   }, [messageValue]);
 
   useEffect(() => {
-    const filesToUpload = selectedFiles.filter(f => f.status === 'new');
-    
+    const filesToUpload = selectedFiles.filter((f) => f.status === 'new');
     if (filesToUpload.length === 0) return;
 
     const uploadNewFiles = async () => {
-      setSelectedFiles(prev => 
-        prev.map(f => 
+      setSelectedFiles((prev) =>
+        prev.map((f) =>
           f.status === 'new' ? { ...f, status: 'uploading' as const } : f
         )
       );
 
       try {
-        const filesArray = filesToUpload.map(f => f.file);
+        const filesArray = filesToUpload.map((f) => f.file);
         const response = await uploadFiles(filesArray);
-        
-        console.log('Файлы загружены:', response);
 
-        setSelectedFiles(prev => 
-          prev.map(fileWithStatus => {
+        setSelectedFiles((prev) =>
+          prev.map((fileWithStatus) => {
             if (fileWithStatus.status === 'uploading') {
               const uploadedFile = response.items?.find(
-                (item: UploadedFileData) => item.name === fileWithStatus.file.name
+                (item: UploadedFileData) =>
+                  item.name === fileWithStatus.file.name
               );
-              
+
               if (uploadedFile) {
                 return {
                   ...fileWithStatus,
@@ -145,11 +167,10 @@ export function MessageInput() {
         );
       } catch (error) {
         console.error('Ошибка загрузки файлов:', error);
-        
-        setSelectedFiles(prev => 
-          prev.map(f => 
-            f.status === 'uploading' 
-              ? { ...f, status: 'error' as const, error: 'Ошибка загрузки' } 
+        setSelectedFiles((prev) =>
+          prev.map((f) =>
+            f.status === 'uploading'
+              ? { ...f, status: 'error' as const, error: 'Ошибка загрузки' }
               : f
           )
         );
@@ -158,48 +179,46 @@ export function MessageInput() {
 
     uploadNewFiles();
   }, [selectedFiles]);
-  
-  const handleAddFileClick = () => {
-    fileInputRef.current?.click();
-  };
 
-  const getTotalFileSize = (files: FileWithStatus[]): number => {
-    return files.reduce((total, fileWithStatus) => total + fileWithStatus.file.size, 0);
-  };
+  const handleAddFileClick = () => fileInputRef.current?.click();
+
+  const getTotalFileSize = (files: FileWithStatus[]) =>
+    files.reduce((total, fileWithStatus) => total + fileWithStatus.file.size, 0);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
       const newFiles = Array.from(files);
-      
-      setSelectedFiles(prev => {
-        const uniqueNewFiles = newFiles.filter(newFile => {
-          return !prev.some(existingFileWithStatus => 
-            existingFileWithStatus.file.name === newFile.name && 
-            existingFileWithStatus.file.size === newFile.size
-          );
-        });
-        
+
+      setSelectedFiles((prev) => {
+        const uniqueNewFiles = newFiles.filter(
+          (newFile) =>
+            !prev.some(
+              (existing) =>
+                existing.file.name === newFile.name &&
+                existing.file.size === newFile.size
+            )
+        );
+
         const availableSlots = 5 - prev.length;
-        let filesToAdd: FileWithStatus[] = [];
-        
+        const filesToAdd: FileWithStatus[] = [];
+
         for (const file of uniqueNewFiles) {
           if (filesToAdd.length >= availableSlots) break;
-          
-          const currentTotalSize = getTotalFileSize([...prev, ...filesToAdd]);
-          const newTotalSize = currentTotalSize + file.size;
-          
-          if (newTotalSize <= MAX_FILE_SIZE_BYTES) {
-            filesToAdd.push({
-              file,
-              status: 'new',
-            });
+
+          const currentTotal = getTotalFileSize([...prev, ...filesToAdd]);
+          const newTotal = currentTotal + file.size;
+
+          if (newTotal <= MAX_FILE_SIZE_BYTES) {
+            filesToAdd.push({ file, status: 'new' });
           } else {
-            console.warn(`Превышен лимит размера файлов (${MAX_FILE_SIZE_MB} МБ). Файл "${file.name}" не добавлен.`);
+            console.warn(
+              `Превышен лимит размера файлов (${MAX_FILE_SIZE_MB} МБ).`
+            );
             break;
           }
         }
-        
+
         return [...prev, ...filesToAdd];
       });
     }
@@ -209,7 +228,7 @@ export function MessageInput() {
   const handleRemoveFile = async (index: number) => {
     try {
       const fileToRemove = selectedFiles[index];
-      setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+      setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
       if (fileToRemove.uploadedData) {
         await removeFile(fileToRemove.uploadedData.id);
       }
@@ -220,106 +239,95 @@ export function MessageInput() {
 
   const getFileIcon = (fileWithStatus: FileWithStatus) => {
     const file = fileWithStatus.file;
-    if (file.type.startsWith('image/')) {
-      return <ImageIcon sx={{ fontSize: '1.2rem' }} />;
-    } else if (file.type.startsWith('video/')) {
-      return <VideoIcon sx={{ fontSize: '1.2rem' }} />;
-    } else {
-      return <FileIcon sx={{ fontSize: '1.2rem' }} />;
-    }
+    if (file.type.startsWith('image/')) return <ImageIcon sx={{ fontSize: '1.2rem' }} />;
+    if (file.type.startsWith('video/')) return <VideoIcon sx={{ fontSize: '1.2rem' }} />;
+    return <FileIcon sx={{ fontSize: '1.2rem' }} />;
   };
 
   const onSubmit = async (data: FormData) => {
     const message = data.message.trim();
     const files = selectedFiles;
-    
-    if (!message) {
-      return;
-    }
-    
+    if (!message) return;
+
     const totalSize = getTotalFileSize(files);
     if (totalSize > MAX_FILE_SIZE_BYTES) {
       console.error(`Общий размер файлов превышает ${MAX_FILE_SIZE_MB} МБ`);
       return;
     }
+
     const attachments = selectedFiles
-      .filter(f => f.status === 'uploaded' && f.uploadedData)
-      .map(f => ({
+      .filter((f) => f.status === 'uploaded' && f.uploadedData)
+      .map((f) => ({
         id: f.uploadedData!.id,
         size: f.uploadedData!.size,
         url: f.uploadedData!.url,
         name: f.uploadedData!.name,
-        type: f.uploadedData!.type
+        type: f.uploadedData!.type,
       }));
+
     setSelectedFiles([]);
     reset();
-    
+
     try {
       if (activeChatId === null) {
         const res = await createChatMutation.mutateAsync();
         dispatch(setNewActiveChat(res.id));
 
         const date = new Date();
-
         const sentMessage = {
           id: 'customId',
-          chat: {
-            id: res.id,
-          },
-          text: message.trim(),
+          chat: { id: res.id },
+          text: message,
           role: 'user',
           created_at: date.toISOString(),
           updated_at: date.toISOString(),
           has_file: attachments.length !== 0,
-          attachments: attachments.length !== 0 ? attachments : undefined,
-        }
+          attachments: attachments.length ? attachments : undefined,
+        };
         dispatch(addMessage(sentMessage));
-        
-        const messageId = await askChat({ 
-          chatId: res.id, 
-          text: message.trim(),
-          attachments: attachments.length !== 0 ? attachments : undefined,
+
+        const messageId = await askChat({
+          chatId: res.id,
+          text: message,
+          attachments: attachments.length ? attachments : undefined,
         });
 
-        dispatch(setChatStatus({ chatId: res.id, isWaitingMsg: true, status: 'polling' }));
+        dispatch(
+          setChatStatus({ chatId: res.id, isWaitingMsg: true, status: 'polling' })
+        );
         dispatch(updateMessageId(messageId.id));
-        
-        const chatMetaData = await getChatById(res.id);
-        
-        if (chatMetaData.chat_subject && chatMetaData.chat_subject !== 'Новый чат') {
-          await renameChatMutation.mutateAsync({
-            chatId: res.id,
-            newSubject: chatMetaData.chat_subject,
-          });
-        }
-        
       } else {
         const date = new Date();
         const sentMessage = {
           id: 'customId',
-          chat: {
-            id: activeChatId,
-          },
-          text: message.trim(),
+          chat: { id: activeChatId },
+          text: message,
           role: 'user',
           has_file: attachments.length !== 0,
-          attachments: attachments.length !== 0 ? attachments : undefined,
+          attachments: attachments.length ? attachments : undefined,
           created_at: date.toISOString(),
           updated_at: date.toISOString(),
-        }
+        };
         dispatch(addMessage(sentMessage));
-        
-        const messageId = await askChat({ 
-          chatId: activeChatId, 
-          text: message.trim(),
-          attachments: attachments.length !== 0 ? attachments : undefined,
+
+        const messageId = await askChat({
+          chatId: activeChatId,
+          text: message,
+          attachments: attachments.length ? attachments : undefined,
         });
 
-        dispatch(setChatStatus({ chatId: activeChatId, isWaitingMsg: true, status: 'polling' }));
+        dispatch(
+          setChatStatus({
+            chatId: activeChatId,
+            isWaitingMsg: true,
+            status: 'polling',
+          })
+        );
 
         dispatch(updateMessageId(messageId.id));
       }
     } catch (error) {
+      console.error(error);
     }
   };
 
@@ -332,15 +340,13 @@ export function MessageInput() {
         right: 0,
         zIndex: 10,
         pointerEvents: 'none',
-        transform: keyboardOffset > 0 ? `translateY(-${keyboardOffset}px)` : 'none',
-        transition: 'transform 0.3s ease-out',
-        '& > *': {
-          pointerEvents: 'auto',
-        },
+        transform: `translateY(-${keyboardOffset}px)`,
+        transition: 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        willChange: keyboardOffset > 0 ? 'transform' : 'auto',
+        '& > *': { pointerEvents: 'auto' },
       }}
     >
       <Container maxWidth="md" sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 3 }}>
-        {/* Отображение выбранных файлов */}
         {selectedFiles.length > 0 && (
           <Box
             sx={{
@@ -350,10 +356,7 @@ export function MessageInput() {
               px: 1,
               py: 0.5,
               overflowX: 'auto',
-              overflowY: 'hidden',
-              '&::-webkit-scrollbar': {
-                display: 'none',
-              },
+              '&::-webkit-scrollbar': { display: 'none' },
               msOverflowStyle: 'none',
               scrollbarWidth: 'none',
             }}
@@ -368,29 +371,21 @@ export function MessageInput() {
                   px: 1.5,
                   py: 0.75,
                   borderRadius: '12px',
-                  background: fileWithStatus.status === 'uploading' 
-                    ? 'rgba(45, 55, 72, 0.95)' 
-                    : fileWithStatus.status === 'uploaded' 
-                    ? 'rgba(66, 153, 225, 0.25)' 
-                    : fileWithStatus.status === 'error' 
-                    ? 'rgba(239, 68, 68, 0.25)' 
-                    : 'rgba(45, 55, 72, 0.95)',
+                  background:
+                    fileWithStatus.status === 'error'
+                      ? 'rgba(239,68,68,0.25)'
+                      : 'rgba(45,55,72,0.95)',
                   border: `1px solid ${
-                    fileWithStatus.status === 'uploading' 
-                      ? 'rgba(66, 153, 225, 0.3)' 
-                      : fileWithStatus.status === 'uploaded' 
-                      ? 'rgba(66, 153, 225, 0.4)' 
-                      : fileWithStatus.status === 'error' 
-                      ? 'rgba(239, 68, 68, 0.4)' 
-                      : 'rgba(66, 153, 225, 0.3)'
+                    fileWithStatus.status === 'error'
+                      ? 'rgba(239,68,68,0.4)'
+                      : 'rgba(66,153,225,0.3)'
                   }`,
                   minWidth: '180px',
-                  maxWidth: '200px',
                   flexShrink: 0,
                   backdropFilter: 'blur(10px)',
                 }}
               >
-                <Box sx={{ color: 'rgba(66, 153, 225, 0.9)', display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ color: 'rgba(66,153,225,0.9)' }}>
                   {getFileIcon(fileWithStatus)}
                 </Box>
                 <Box
@@ -414,12 +409,12 @@ export function MessageInput() {
                     {fileWithStatus.file.name}
                   </Box>
                   {fileWithStatus.status === 'uploading' && (
-                    <Box sx={{ fontSize: '0.7rem', color: 'rgba(66, 153, 225, 0.7)' }}>
+                    <Box sx={{ fontSize: '0.7rem', color: 'rgba(66,153,225,0.7)' }}>
                       Загрузка...
                     </Box>
                   )}
                   {fileWithStatus.status === 'error' && (
-                    <Box sx={{ fontSize: '0.7rem', color: 'rgba(239, 68, 68, 0.9)' }}>
+                    <Box sx={{ fontSize: '0.7rem', color: 'rgba(239,68,68,0.9)' }}>
                       Ошибка загрузки
                     </Box>
                   )}
@@ -430,10 +425,10 @@ export function MessageInput() {
                   sx={{
                     width: 20,
                     height: 20,
-                    color: 'rgba(239, 68, 68, 0.8)',
+                    color: 'rgba(239,68,68,0.8)',
                     '&:hover': {
-                      color: 'rgba(239, 68, 68, 1)',
-                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                      color: 'rgba(239,68,68,1)',
+                      backgroundColor: 'rgba(239,68,68,0.1)',
                     },
                   }}
                 >
@@ -443,16 +438,8 @@ export function MessageInput() {
             ))}
           </Box>
         )}
-        
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 1.5,
-            alignItems: 'flex-end',
-            width: '100%',
-          }}
-        >
-          {/* Скрытый input для выбора файлов */}
+
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-end', width: '100%' }}>
           <input
             ref={fileInputRef}
             type="file"
@@ -460,57 +447,31 @@ export function MessageInput() {
             style={{ display: 'none' }}
             onChange={handleFileChange}
           />
-          
-          {/* Кнопка добавления файла (слева) */}
-          <Box sx={{ position: 'relative' }}>
-            <IconButton
-              onClick={handleAddFileClick}
-              disabled={selectedFiles.length >= 5 || getTotalFileSize(selectedFiles) >= MAX_FILE_SIZE_BYTES}
-              sx={{
-                width: 46,
-                height: 46,
-                flexShrink: 0,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(45, 55, 72, 0.95) 100%)',
-                border: '1px solid rgba(66, 153, 225, 0.3)',
-                color: 'rgba(66, 153, 225, 0.9)',
-                transition: 'all 0.2s ease-in-out',
-                '&:hover': {
-                  color: 'rgba(66, 153, 225, 1)',
-                  borderColor: 'rgba(66, 153, 225, 0.5)',
-                  background: 'linear-gradient(135deg, rgba(26, 32, 44, 1) 0%, rgba(45, 55, 72, 1) 100%)',
-                },
-                '&:disabled': {
-                  color: 'rgba(160, 174, 192, 0.5)',
-                  borderColor: 'rgba(160, 174, 192, 0.2)',
-                  background: 'rgba(26, 32, 44, 0.5)',
-                },
-              }}
-            >
-              <AddIcon sx={{ fontSize: '1.4rem' }} />
-            </IconButton>
-            {selectedFiles.length >= 5 && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: -8,
-                  right: -8,
-                  fontSize: '0.75rem',
-                  color: '#fff',
-                  fontWeight: 700,
-                  backgroundColor: 'rgba(239, 68, 68, 0.95)',
-                  borderRadius: '10px',
-                  px: 0.75,
-                  py: 0.25,
-                  border: '2px solid rgba(15, 20, 25, 1)',
-                }}
-              >
-                5/5
-              </Box>
-            )}
-          </Box>
-          
-          {/* Овал с инпутом и кнопкой отправки (справа) */}
+
+          <IconButton
+            onClick={handleAddFileClick}
+            disabled={
+              selectedFiles.length >= 5 ||
+              getTotalFileSize(selectedFiles) >= MAX_FILE_SIZE_BYTES
+            }
+            sx={{
+              width: 46,
+              height: 46,
+              flexShrink: 0,
+              borderRadius: '50%',
+              background:
+                'linear-gradient(135deg, rgba(26,32,44,0.95), rgba(45,55,72,0.95))',
+              border: '1px solid rgba(66,153,225,0.3)',
+              color: 'rgba(66,153,225,0.9)',
+              '&:hover': {
+                color: 'rgba(66,153,225,1)',
+                borderColor: 'rgba(66,153,225,0.5)',
+              },
+            }}
+          >
+            <AddIcon sx={{ fontSize: '1.4rem' }} />
+          </IconButton>
+
           <Paper
             component="form"
             onSubmit={handleSubmit(onSubmit)}
@@ -520,20 +481,12 @@ export function MessageInput() {
               display: 'flex',
               gap: 0.5,
               alignItems: 'flex-end',
-              minHeight: 42,
               px: 1.5,
               py: 0.5,
               borderRadius: '21px',
-              background: 'linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(45, 55, 72, 0.95) 100%)',
-              border: '1px solid',
-              borderColor: 'rgba(66, 153, 225, 0.2)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(66, 153, 225, 0.1)',
-              backdropFilter: 'blur(20px)',
-              transition: 'all 0.3s ease-in-out',
-              '&:hover': {
-                borderColor: 'rgba(66, 153, 225, 0.4)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(66, 153, 225, 0.2)',
-              },
+              background:
+                'linear-gradient(135deg, rgba(26,32,44,0.95), rgba(45,55,72,0.95))',
+              border: '1px solid rgba(66,153,225,0.2)',
             }}
           >
             <TextField
@@ -554,16 +507,7 @@ export function MessageInput() {
                   backgroundColor: 'transparent',
                   fontSize: '0.95rem',
                   padding: 0,
-                  alignItems: 'flex-start',
-                  '& fieldset': {
-                    border: 'none',
-                  },
-                  '&:hover fieldset': {
-                    border: 'none',
-                  },
-                  '&.Mui-focused fieldset': {
-                    border: 'none',
-                  },
+                  '& fieldset': { border: 'none' },
                 },
                 '& .MuiInputBase-input': {
                   color: 'text.primary',
@@ -571,24 +515,6 @@ export function MessageInput() {
                   lineHeight: '1.5',
                   maxHeight: '120px',
                   overflowY: 'auto !important',
-                  boxSizing: 'border-box',
-                  '&::-webkit-scrollbar': {
-                    width: '4px',
-                  },
-                  '&::-webkit-scrollbar-track': {
-                    background: 'transparent',
-                  },
-                  '&::-webkit-scrollbar-thumb': {
-                    background: 'rgba(66, 153, 225, 0.3)',
-                    borderRadius: '2px',
-                    '&:hover': {
-                      background: 'rgba(66, 153, 225, 0.5)',
-                    },
-                  },
-                },
-                '& .MuiInputBase-input::placeholder': {
-                  color: 'text.secondary',
-                  opacity: 0.8,
                 },
               }}
             />
@@ -597,35 +523,16 @@ export function MessageInput() {
               variant="contained"
               disabled={
                 !messageValue?.trim() ||
-                chatStatus?.isWaitingMsg || 
-                selectedFiles.some(f => f.status === 'uploading' || f.status === 'new')
+                chatStatus?.isWaitingMsg ||
+                selectedFiles.some((f) => f.status === 'uploading' || f.status === 'new')
               }
               sx={{
                 minWidth: 32,
                 width: 32,
                 height: 32,
-                alignSelf: 'flex-end',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #4299E1 0%, #3182CE 100%)',
-                boxShadow: '0 4px 12px rgba(66, 153, 225, 0.3)',
-                border: '1px solid rgba(66, 153, 225, 0.3)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #63B3ED 0%, #4299E1 100%)',
-                  boxShadow: '0 6px 20px rgba(66, 153, 225, 0.5)',
-                  transform: 'translateY(-1px)',
-                },
-                '&:active': {
-                  transform: 'translateY(0)',
-                  boxShadow: '0 2px 8px rgba(66, 153, 225, 0.4)',
-                },
-                '&:disabled': {
-                  background: 'linear-gradient(135deg, #A0AEC0 0%, #718096 100%)',
-                  color: '#ffffff',
-                  opacity: 0.7,
-                },
-                transition: 'all 0.2s ease-in-out',
-                flexShrink: 0,
-                mb: 0.25,
+                background:
+                  'linear-gradient(135deg, #4299E1 0%, #3182CE 100%)',
               }}
             >
               <SendIcon sx={{ color: '#fff', fontSize: '1.1rem' }} />
