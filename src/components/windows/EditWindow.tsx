@@ -5,11 +5,8 @@ import {
   TextField,
   Button,
   IconButton,
-  Menu,
-  MenuItem,
-  Badge,
 } from '@mui/material';
-import { Add as AddIcon, Close as CloseIcon, InsertDriveFile as FileIcon, Image as ImageIcon, VideoLibrary as VideoIcon, PhotoLibrary as GalleryIcon } from '@mui/icons-material';
+import { Add as AddIcon, Close as CloseIcon, InsertDriveFile as FileIcon, Image as ImageIcon, VideoLibrary as VideoIcon } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { editMessage } from '@/services/editMessage';
 import { redactMessage } from '@/slices/messagesSlice';
@@ -57,13 +54,11 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 export function EditWindow({ messageId, onCancel, onSave, editedText, setEditedText, initialAttachments = [] }: EditWindowProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
   const { activeChatId } = useSelector((state: RootState) => state.activeChat);
   
   const [existingFiles, setExistingFiles] = useState<ExistingAttachment[]>(initialAttachments);
   const [newFiles, setNewFiles] = useState<FileWithStatus[]>([]);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -206,22 +201,8 @@ export function EditWindow({ messageId, onCancel, onSave, editedText, setEditedT
       setNewFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleCloseMenu = () => {
-    setAnchorEl(null);
-  };
-
-  const handleFileClick = () => {
+  const handleAddFileClick = () => {
     fileInputRef.current?.click();
-    handleCloseMenu();
-  };
-
-  const handleGalleryClick = () => {
-    galleryInputRef.current?.click();
-    handleCloseMenu();
   };
 
   const handleSave = async () => {
@@ -281,19 +262,11 @@ export function EditWindow({ messageId, onCancel, onSave, editedText, setEditedT
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
         }}
       >
-        {/* Скрытые input элементы для выбора файлов */}
+        {/* Скрытый input элемент для выбора файлов */}
         <input
           ref={fileInputRef}
           type="file"
           multiple
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
-        <input
-          ref={galleryInputRef}
-          type="file"
-          multiple
-          accept="image/*,video/*"
           style={{ display: 'none' }}
           onChange={handleFileChange}
         />
@@ -530,53 +503,6 @@ export function EditWindow({ messageId, onCancel, onSave, editedText, setEditedT
           />
         </Box>
 
-        {/* Меню выбора типа файлов */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleCloseMenu}
-          anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-          transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-          PaperProps={{
-            sx: {
-              backgroundColor: 'rgba(45, 55, 72, 0.98)',
-              backdropFilter: 'blur(20px)',
-              minWidth: '140px',
-            },
-          }}
-        >
-          <MenuItem 
-            onClick={handleFileClick}
-            sx={{
-              color: 'text.primary',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-              '&:hover': {
-                backgroundColor: 'rgba(66, 153, 225, 0.15)',
-              },
-            }}
-          >
-            <FileIcon sx={{ fontSize: '1.2rem' }} />
-            Файл
-          </MenuItem>
-          <MenuItem 
-            onClick={handleGalleryClick}
-            sx={{
-              color: 'text.primary',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-              '&:hover': {
-                backgroundColor: 'rgba(66, 153, 225, 0.15)',
-              },
-            }}
-          >
-            <GalleryIcon sx={{ fontSize: '1.2rem' }} />
-            Галерея
-          </MenuItem>
-        </Menu>
-
         {/* Кнопки */}
         <Box
           sx={{
@@ -587,20 +513,9 @@ export function EditWindow({ messageId, onCancel, onSave, editedText, setEditedT
           }}
         >
           {/* Кнопка добавления файлов */}
-          <Badge
-            badgeContent={getTotalFilesCount()}
-            color="secondary"
-            sx={{
-              '& .MuiBadge-badge': {
-                fontSize: '0.65rem',
-                height: 16,
-                minWidth: 16,
-                padding: '0 4px',
-              },
-            }}
-          >
+          <Box sx={{ position: 'relative' }}>
             <IconButton
-              onClick={handleOpenMenu}
+              onClick={handleAddFileClick}
               disabled={getTotalFilesCount() >= 5 || getTotalFileSize(newFiles) >= MAX_FILE_SIZE_BYTES}
               sx={{
                 width: 36,
@@ -619,7 +534,26 @@ export function EditWindow({ messageId, onCancel, onSave, editedText, setEditedT
             >
               <AddIcon sx={{ fontSize: '1.2rem' }} />
             </IconButton>
-          </Badge>
+            {getTotalFilesCount() >= 5 && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  fontSize: '0.7rem',
+                  color: '#fff',
+                  fontWeight: 700,
+                  backgroundColor: 'rgba(239, 68, 68, 0.95)',
+                  borderRadius: '8px',
+                  px: 0.6,
+                  py: 0.2,
+                  border: '2px solid rgba(45, 55, 72, 1)',
+                }}
+              >
+                5/5
+              </Box>
+            )}
+          </Box>
 
           {/* Кнопки отмены и отправки */}
           <Box sx={{ display: 'flex', gap: 1 }}>
