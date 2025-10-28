@@ -10,7 +10,6 @@ import { ChatWindow } from '@/components/chat-page/ChatWindow';
 import { MessageInput } from '@/components/chat-page/MessageInput';
 import theme from '@/theme';
 import { useEffect } from 'react';
-import { postEvent } from '@telegram-apps/sdk-react';
 
 export function ChatPage() {
   
@@ -20,31 +19,40 @@ export function ChatPage() {
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
-    if (!tg) return;
+    if (!tg) {
+      // Fallback для разработки вне Telegram
+      setViewportHeight(window.innerHeight);
+      return;
+    }
 
-    // Сообщаем Telegram, что WebApp готов и должен быть развёрнут
-    postEvent('web_app_ready');
-    postEvent('web_app_expand');
+    // Инициализация Telegram WebApp
+    tg.ready();
+    tg.expand();
 
-    // Подписка на изменение viewport
-    const updateHeight = (data?: any) => {
-      const newHeight =
-        data?.viewportHeight ??
-        tg.viewportHeight ??
-        window.innerHeight;
+    let rafId: number | null = null;
 
-      setViewportHeight(newHeight);
+    // Плавное обновление высоты viewport
+    const updateHeight = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+
+      rafId = requestAnimationFrame(() => {
+        const newHeight = tg.viewportHeight || window.innerHeight;
+        setViewportHeight(newHeight);
+      });
     };
 
+    // Слушаем изменения viewport
     tg.onEvent('viewportChanged', updateHeight);
 
-    // ⚡ Запрашиваем у Telegram актуальные данные сразу
-    tg.postEvent('web_app_request_viewport');
-
-    // На всякий случай делаем первый апдейт из текущего состояния
+    // Устанавливаем начальную высоту
     updateHeight();
 
     return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
       tg.offEvent('viewportChanged', updateHeight);
     };
   }, []);
@@ -65,6 +73,8 @@ export function ChatPage() {
           height: viewportHeight + 'px',
           display: 'flex',
           backgroundColor: 'background.default',
+          transition: 'height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          willChange: 'height',
         }}
       >
         {/* Боковая панель */}

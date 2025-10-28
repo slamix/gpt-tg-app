@@ -256,10 +256,11 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
           overflow: 'auto',
           p: 1,
           pt: '70px',
-          pb: '140px',
+          pb: '100px',
           backgroundColor: 'background.default',
           scrollBehavior: 'smooth',
           position: 'relative',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
       {/* Индикатор загрузки */}
