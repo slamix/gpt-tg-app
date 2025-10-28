@@ -7,11 +7,8 @@ import {
   Button,
   Paper,
   IconButton,
-  Menu,
-  MenuItem,
-  Badge,
 } from '@mui/material';
-import { Send as SendIcon, Add as AddIcon, Close as CloseIcon, InsertDriveFile as FileIcon, Image as ImageIcon, VideoLibrary as VideoIcon, PhotoLibrary as GalleryIcon } from '@mui/icons-material';
+import { Send as SendIcon, Add as AddIcon, Close as CloseIcon, InsertDriveFile as FileIcon, Image as ImageIcon, VideoLibrary as VideoIcon } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/slices';
 import { askChat } from '@/services/askChat';
@@ -52,11 +49,10 @@ export function MessageInput() {
     defaultValues: { message: '' },
     mode: 'onChange',
   });
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileWithStatus[]>([]);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const textFieldRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
   const activeChatId = useSelector((state: RootState) => state.activeChat.activeChatId);
   
@@ -69,6 +65,32 @@ export function MessageInput() {
   
   const createChatMutation = useCreateChat();
   const renameChatMutation = useRenameChat();
+
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (!isMobile) return;
+
+    const handleResize = () => {
+      if (window.visualViewport) {
+        const viewportHeight = window.visualViewport.height;
+        const windowHeight = window.innerHeight;
+        const offset = windowHeight - viewportHeight;
+        setKeyboardOffset(offset > 0 ? offset : 0);
+      }
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
+    }
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      }
+    };
+  }, []);
   
   useEffect(() => {
     if (textFieldRef.current) {
@@ -137,22 +159,8 @@ export function MessageInput() {
     uploadNewFiles();
   }, [selectedFiles]);
   
-  const handleOpenMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleCloseMenu = () => {
-    setAnchorEl(null);
-  };
-
-  const handleFileClick = () => {
-    handleCloseMenu();
+  const handleAddFileClick = () => {
     fileInputRef.current?.click();
-  };
-
-  const handleGalleryClick = () => {
-    handleCloseMenu();
-    galleryInputRef.current?.click();
   };
 
   const getTotalFileSize = (files: FileWithStatus[]): number => {
@@ -201,13 +209,12 @@ export function MessageInput() {
   const handleRemoveFile = async (index: number) => {
     try {
       const fileToRemove = selectedFiles[index];
+      setSelectedFiles(prev => prev.filter((_, i) => i !== index));
       if (fileToRemove.uploadedData) {
         await removeFile(fileToRemove.uploadedData.id);
       }
     } catch (error) {
       console.error('Ошибка удаления файла:', error);
-    } finally {
-      setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -319,256 +326,216 @@ export function MessageInput() {
   return (
     <Box
       sx={{
-        position: 'absolute',
+        position: 'fixed',
         bottom: 0,
         left: 0,
         right: 0,
         zIndex: 10,
-        backgroundColor: 'background.default',
-        borderTop: '1px solid',
-        borderTopColor: 'divider',
-        backdropFilter: 'blur(10px)',
-        background: 'linear-gradient(180deg, rgba(15, 20, 25, 0.95) 0%, rgba(15, 20, 25, 1) 100%)',
+        pointerEvents: 'none',
+        transform: keyboardOffset > 0 ? `translateY(-${keyboardOffset}px)` : 'none',
+        transition: 'transform 0.3s ease-out',
+        '& > *': {
+          pointerEvents: 'auto',
+        },
       }}
     >
-      <Container maxWidth="md" sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
-        <Paper
-          elevation={3}
-          sx={{
-            p: 1,
-            borderRadius: '28px',
-            background: 'linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(45, 55, 72, 0.95) 100%)',
-            border: '1px solid',
-            borderColor: 'rgba(66, 153, 225, 0.2)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(66, 153, 225, 0.1)',
-            backdropFilter: 'blur(20px)',
-            transition: 'all 0.3s ease-in-out',
-            '&:hover': {
-              borderColor: 'rgba(66, 153, 225, 0.4)',
-              boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(66, 153, 225, 0.2)',
-            },
-          }}
-        >
-          {/* Отображение выбранных файлов */}
-          {selectedFiles.length > 0 && (
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 1,
-                mb: 1,
-                px: 1,
-                py: 0.5,
-                overflowX: 'auto',
-                overflowY: 'hidden',
-                '&::-webkit-scrollbar': {
-                  display: 'none',
-                },
-                msOverflowStyle: 'none',
-                scrollbarWidth: 'none',
-              }}
-            >
-              {selectedFiles.map((fileWithStatus, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    px: 1.5,
-                    py: 0.75,
-                    borderRadius: '12px',
-                    background: fileWithStatus.status === 'uploading' 
-                      ? 'rgba(66, 153, 225, 0.05)' 
-                      : fileWithStatus.status === 'uploaded' 
-                      ? 'rgba(66, 153, 225, 0.15)' 
-                      : fileWithStatus.status === 'error' 
-                      ? 'rgba(239, 68, 68, 0.15)' 
-                      : 'rgba(66, 153, 225, 0.1)',
-                    border: `1px solid ${
-                      fileWithStatus.status === 'uploading' 
-                        ? 'rgba(66, 153, 225, 0.2)' 
-                        : fileWithStatus.status === 'uploaded' 
-                        ? 'rgba(66, 153, 225, 0.3)' 
-                        : fileWithStatus.status === 'error' 
-                        ? 'rgba(239, 68, 68, 0.3)' 
-                        : 'rgba(66, 153, 225, 0.2)'
-                    }`,
-                    minWidth: '180px',
-                    maxWidth: '200px',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Box sx={{ color: 'rgba(66, 153, 225, 0.9)', display: 'flex', alignItems: 'center' }}>
-                    {getFileIcon(fileWithStatus)}
-                  </Box>
-                  <Box
-                    sx={{
-                      flex: 1,
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 0.25,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        fontSize: '0.85rem',
-                        color: 'text.primary',
-                      }}
-                    >
-                      {fileWithStatus.file.name}
-                    </Box>
-                    {fileWithStatus.status === 'uploading' && (
-                      <Box sx={{ fontSize: '0.7rem', color: 'rgba(66, 153, 225, 0.7)' }}>
-                        Загрузка...
-                      </Box>
-                    )}
-                    {fileWithStatus.status === 'error' && (
-                      <Box sx={{ fontSize: '0.7rem', color: 'rgba(239, 68, 68, 0.9)' }}>
-                        Ошибка загрузки
-                      </Box>
-                    )}
-                  </Box>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleRemoveFile(index)}
-                    sx={{
-                      width: 20,
-                      height: 20,
-                      color: 'rgba(239, 68, 68, 0.8)',
-                      '&:hover': {
-                        color: 'rgba(239, 68, 68, 1)',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                      },
-                    }}
-                  >
-                    <CloseIcon sx={{ fontSize: '0.9rem' }} />
-                  </IconButton>
-                </Box>
-              ))}
-            </Box>
-          )}
+      <Container maxWidth="md" sx={{ px: { xs: 2, sm: 3 }, pt: 2, pb: 3 }}>
+        {/* Отображение выбранных файлов */}
+        {selectedFiles.length > 0 && (
           <Box
-            component="form"
-            onSubmit={handleSubmit(onSubmit)}
             sx={{
               display: 'flex',
               gap: 1,
-              alignItems: 'flex-end',
-              width: '100%',
+              mb: 1,
+              px: 1,
+              py: 0.5,
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              '&::-webkit-scrollbar': {
+                display: 'none',
+              },
+              msOverflowStyle: 'none',
+              scrollbarWidth: 'none',
             }}
           >
-            {/* Скрытые input элементы для выбора файлов */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              style={{ display: 'none' }}
-              onChange={handleFileChange}
-            />
-            <input
-              ref={galleryInputRef}
-              type="file"
-              multiple
-              accept="image/*,video/*"
-              style={{ display: 'none' }}
-              onChange={handleFileChange}
-            />
-            <Badge
-              key={selectedFiles.length}
-              badgeContent={selectedFiles.length > 0 ? `${selectedFiles.length}/5` : 0}
-              invisible={selectedFiles.length === 0}
-              sx={{
-                alignSelf: 'flex-end',
-                '& .MuiBadge-badge': {
-                  backgroundColor: (selectedFiles.length >= 5 || getTotalFileSize(selectedFiles) >= MAX_FILE_SIZE_BYTES) 
-                    ? 'rgba(239, 68, 68, 0.9)' 
-                    : 'rgba(66, 153, 225, 0.9)',
-                  color: '#fff',
-                  fontSize: '0.65rem',
-                  height: '18px',
-                  minWidth: '30px',
-                  borderRadius: '9px',
-                },
-              }}
-            >
-              <IconButton
-                onClick={handleOpenMenu}
-                disabled={selectedFiles.length >= 5 || getTotalFileSize(selectedFiles) >= MAX_FILE_SIZE_BYTES}
+            {selectedFiles.map((fileWithStatus, index) => (
+              <Box
+                key={index}
                 sx={{
-                  width: 40,
-                  height: 40,
-                  flexShrink: 0,
-                  color: 'rgba(66, 153, 225, 0.8)',
-                  '&:hover': {
-                    color: 'rgba(66, 153, 225, 1)',
-                    backgroundColor: 'rgba(66, 153, 225, 0.1)',
-                  },
-                  '&:disabled': {
-                    color: 'rgba(160, 174, 192, 0.5)',
-                  },
-                }}
-              >
-                <AddIcon />
-              </IconButton>
-            </Badge>
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleCloseMenu}
-              anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-              }}
-              transformOrigin={{
-                vertical: 'bottom',
-                horizontal: 'left',
-              }}
-              sx={{
-                '& .MuiPaper-root': {
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  px: 1.5,
+                  py: 0.75,
                   borderRadius: '12px',
-                  background: 'linear-gradient(135deg, rgba(26, 32, 44, 0.98) 0%, rgba(45, 55, 72, 0.98) 100%)',
-                  border: '1px solid rgba(66, 153, 225, 0.2)',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-                  backdropFilter: 'blur(20px)',
-                  minWidth: '140px',
+                  background: fileWithStatus.status === 'uploading' 
+                    ? 'rgba(45, 55, 72, 0.95)' 
+                    : fileWithStatus.status === 'uploaded' 
+                    ? 'rgba(66, 153, 225, 0.25)' 
+                    : fileWithStatus.status === 'error' 
+                    ? 'rgba(239, 68, 68, 0.25)' 
+                    : 'rgba(45, 55, 72, 0.95)',
+                  border: `1px solid ${
+                    fileWithStatus.status === 'uploading' 
+                      ? 'rgba(66, 153, 225, 0.3)' 
+                      : fileWithStatus.status === 'uploaded' 
+                      ? 'rgba(66, 153, 225, 0.4)' 
+                      : fileWithStatus.status === 'error' 
+                      ? 'rgba(239, 68, 68, 0.4)' 
+                      : 'rgba(66, 153, 225, 0.3)'
+                  }`,
+                  minWidth: '180px',
+                  maxWidth: '200px',
+                  flexShrink: 0,
+                  backdropFilter: 'blur(10px)',
+                }}
+              >
+                <Box sx={{ color: 'rgba(66, 153, 225, 0.9)', display: 'flex', alignItems: 'center' }}>
+                  {getFileIcon(fileWithStatus)}
+                </Box>
+                <Box
+                  sx={{
+                    flex: 1,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 0.25,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.85rem',
+                      color: 'text.primary',
+                    }}
+                  >
+                    {fileWithStatus.file.name}
+                  </Box>
+                  {fileWithStatus.status === 'uploading' && (
+                    <Box sx={{ fontSize: '0.7rem', color: 'rgba(66, 153, 225, 0.7)' }}>
+                      Загрузка...
+                    </Box>
+                  )}
+                  {fileWithStatus.status === 'error' && (
+                    <Box sx={{ fontSize: '0.7rem', color: 'rgba(239, 68, 68, 0.9)' }}>
+                      Ошибка загрузки
+                    </Box>
+                  )}
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={() => handleRemoveFile(index)}
+                  sx={{
+                    width: 20,
+                    height: 20,
+                    color: 'rgba(239, 68, 68, 0.8)',
+                    '&:hover': {
+                      color: 'rgba(239, 68, 68, 1)',
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    },
+                  }}
+                >
+                  <CloseIcon sx={{ fontSize: '0.9rem' }} />
+                </IconButton>
+              </Box>
+            ))}
+          </Box>
+        )}
+        
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 1.5,
+            alignItems: 'flex-end',
+            width: '100%',
+          }}
+        >
+          {/* Скрытый input для выбора файлов */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+          
+          {/* Кнопка добавления файла (слева) */}
+          <Box sx={{ position: 'relative' }}>
+            <IconButton
+              onClick={handleAddFileClick}
+              disabled={selectedFiles.length >= 5 || getTotalFileSize(selectedFiles) >= MAX_FILE_SIZE_BYTES}
+              sx={{
+                width: 46,
+                height: 46,
+                flexShrink: 0,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(45, 55, 72, 0.95) 100%)',
+                border: '1px solid rgba(66, 153, 225, 0.3)',
+                color: 'rgba(66, 153, 225, 0.9)',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  color: 'rgba(66, 153, 225, 1)',
+                  borderColor: 'rgba(66, 153, 225, 0.5)',
+                  background: 'linear-gradient(135deg, rgba(26, 32, 44, 1) 0%, rgba(45, 55, 72, 1) 100%)',
+                },
+                '&:disabled': {
+                  color: 'rgba(160, 174, 192, 0.5)',
+                  borderColor: 'rgba(160, 174, 192, 0.2)',
+                  background: 'rgba(26, 32, 44, 0.5)',
                 },
               }}
             >
-              <MenuItem 
-                onClick={handleFileClick}
+              <AddIcon sx={{ fontSize: '1.4rem' }} />
+            </IconButton>
+            {selectedFiles.length >= 5 && (
+              <Box
                 sx={{
-                  color: 'text.primary',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  '&:hover': {
-                    backgroundColor: 'rgba(66, 153, 225, 0.15)',
-                  },
+                  position: 'absolute',
+                  top: -8,
+                  right: -8,
+                  fontSize: '0.75rem',
+                  color: '#fff',
+                  fontWeight: 700,
+                  backgroundColor: 'rgba(239, 68, 68, 0.95)',
+                  borderRadius: '10px',
+                  px: 0.75,
+                  py: 0.25,
+                  border: '2px solid rgba(15, 20, 25, 1)',
                 }}
               >
-                <FileIcon sx={{ fontSize: '1.2rem' }} />
-                Файл
-              </MenuItem>
-              <MenuItem 
-                onClick={handleGalleryClick}
-                sx={{
-                  color: 'text.primary',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  '&:hover': {
-                    backgroundColor: 'rgba(66, 153, 225, 0.15)',
-                  },
-                }}
-              >
-                <GalleryIcon sx={{ fontSize: '1.2rem' }} />
-                Галерея
-              </MenuItem>
-            </Menu>
+                5/5
+              </Box>
+            )}
+          </Box>
+          
+          {/* Овал с инпутом и кнопкой отправки (справа) */}
+          <Paper
+            component="form"
+            onSubmit={handleSubmit(onSubmit)}
+            elevation={3}
+            sx={{
+              flex: 1,
+              display: 'flex',
+              gap: 0.5,
+              alignItems: 'flex-end',
+              minHeight: 42,
+              px: 1.5,
+              py: 0.5,
+              borderRadius: '21px',
+              background: 'linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(45, 55, 72, 0.95) 100%)',
+              border: '1px solid',
+              borderColor: 'rgba(66, 153, 225, 0.2)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(66, 153, 225, 0.1)',
+              backdropFilter: 'blur(20px)',
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                borderColor: 'rgba(66, 153, 225, 0.4)',
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(66, 153, 225, 0.2)',
+              },
+            }}
+          >
             <TextField
               {...register('message')}
               inputRef={textFieldRef}
@@ -585,7 +552,6 @@ export function MessageInput() {
               sx={{
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: 'transparent',
-                  borderRadius: '20px',
                   fontSize: '0.95rem',
                   padding: 0,
                   alignItems: 'flex-start',
@@ -601,20 +567,20 @@ export function MessageInput() {
                 },
                 '& .MuiInputBase-input': {
                   color: 'text.primary',
-                  padding: '10px 14px',
-                  minHeight: '20px',
-                  maxHeight: 'calc(30vh - 60px)',
+                  padding: '8px 0',
+                  lineHeight: '1.5',
+                  maxHeight: '120px',
                   overflowY: 'auto !important',
                   boxSizing: 'border-box',
                   '&::-webkit-scrollbar': {
-                    width: '6px',
+                    width: '4px',
                   },
                   '&::-webkit-scrollbar-track': {
                     background: 'transparent',
                   },
                   '&::-webkit-scrollbar-thumb': {
                     background: 'rgba(66, 153, 225, 0.3)',
-                    borderRadius: '3px',
+                    borderRadius: '2px',
                     '&:hover': {
                       background: 'rgba(66, 153, 225, 0.5)',
                     },
@@ -635,9 +601,9 @@ export function MessageInput() {
                 selectedFiles.some(f => f.status === 'uploading' || f.status === 'new')
               }
               sx={{
-                minWidth: 40,
-                width: 40,
-                height: 40,
+                minWidth: 32,
+                width: 32,
+                height: 32,
                 alignSelf: 'flex-end',
                 borderRadius: '50%',
                 background: 'linear-gradient(135deg, #4299E1 0%, #3182CE 100%)',
@@ -659,12 +625,13 @@ export function MessageInput() {
                 },
                 transition: 'all 0.2s ease-in-out',
                 flexShrink: 0,
+                mb: 0.25,
               }}
             >
-              <SendIcon sx={{ color: '#fff', fontSize: '1.25rem' }} />
+              <SendIcon sx={{ color: '#fff', fontSize: '1.1rem' }} />
             </Button>
-          </Box>
-        </Paper>
+          </Paper>
+        </Box>
       </Container>
     </Box>
   );
