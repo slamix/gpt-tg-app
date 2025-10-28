@@ -31,6 +31,8 @@ import ReactMarkdown from 'react-markdown';
 import formatTime from '@/utils/formatTime';
 import { EditWindow } from '@/components/windows/EditWindow';
 import { setChatStatus } from '@/slices/waitingMsgSlice';
+import { getChatById } from '@/services/getChatById';
+import { useRenameChat } from '@/hooks/useRenameChat';
 
 interface ChatWindowProps {
   onScrollDirectionChange?: (isScrollingDown: boolean) => void;
@@ -55,6 +57,8 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastScrollTop = useRef(0);
+  
+  const renameChatMutation = useRenameChat();
 
   const getFileIcon = (type: string) => {
     if (type.startsWith('image/')) {
@@ -182,6 +186,20 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
         if (res.role === "assistant") {
           dispatch(addMessage(res));
           dispatch(setChatStatus({ chatId: pollingChatId, isWaitingMsg: false, status: 'gotMsg' }));
+          
+          try {
+            const chatMetaData = await getChatById(pollingChatId);
+            
+            if (chatMetaData.chat_subject && chatMetaData.chat_subject !== 'Новый чат') {
+              await renameChatMutation.mutateAsync({
+                chatId: pollingChatId,
+                newSubject: chatMetaData.chat_subject,
+              });
+            }
+          } catch (renameError) {
+            console.error('Ошибка при переименовании чата:', renameError);
+          }
+          
           return;
         }
         
@@ -201,7 +219,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
       isActive = false;
       clearTimeout(timeoutId);
     };
-  }, [activeChatId, chatStatus?.status, dispatch]);
+  }, [activeChatId, chatStatus?.status, dispatch, renameChatMutation]);
 
   useEffect(() => {
     if (messages.length > 0 || chatStatus?.isWaitingMsg) {
