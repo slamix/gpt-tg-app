@@ -256,7 +256,7 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
           overflow: 'auto',
           p: 1,
           pt: '70px',
-          pb: '100px',
+          pb: '120px',
           backgroundColor: 'background.default',
           scrollBehavior: 'smooth',
           position: 'relative',

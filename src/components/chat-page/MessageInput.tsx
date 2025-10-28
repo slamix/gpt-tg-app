@@ -280,9 +280,15 @@ export function MessageInput() {
   return (
     <Box
       sx={{
-        mt: 'auto',              // прижимаем футер к низу flex-контейнера
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
         width: '100%',
-        zIndex: 10,              // можно оставить, если нужно перекрывать фон
+        zIndex: 1000,
+        pointerEvents: 'none',
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
         '& > *': { pointerEvents: 'auto' },
       }}
     >

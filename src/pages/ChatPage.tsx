@@ -20,39 +20,23 @@ export function ChatPage() {
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
     if (!tg) {
-      // Fallback для разработки вне Telegram
       setViewportHeight(window.innerHeight);
       return;
     }
 
-    // Инициализация Telegram WebApp
     tg.ready();
     tg.expand();
 
-    let rafId: number | null = null;
-
-    // Плавное обновление высоты viewport
+    // МГНОВЕННОЕ обновление высоты без задержек
     const updateHeight = () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-
-      rafId = requestAnimationFrame(() => {
-        const newHeight = tg.viewportHeight || window.innerHeight;
-        setViewportHeight(newHeight);
-      });
+      const newHeight = tg.viewportHeight || window.innerHeight;
+      setViewportHeight(newHeight);
     };
 
-    // Слушаем изменения viewport
     tg.onEvent('viewportChanged', updateHeight);
-
-    // Устанавливаем начальную высоту
     updateHeight();
 
     return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
       tg.offEvent('viewportChanged', updateHeight);
     };
   }, []);
@@ -73,8 +57,6 @@ export function ChatPage() {
           height: viewportHeight + 'px',
           display: 'flex',
           backgroundColor: 'background.default',
-          transition: 'height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          willChange: 'height',
         }}
       >
         {/* Боковая панель */}
