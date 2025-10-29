@@ -510,7 +510,10 @@ export function MessageInput() {
           {/* Кнопка добавления файла (слева) */}
           <Box sx={{ position: 'relative' }}>
             <IconButton
-              onClick={handleAddFileClick}
+              onMouseDown={(e) => {
+                e.preventDefault(); // Предотвращаем blur инпута
+                handleAddFileClick();
+              }}
               disabled={selectedFiles.length >= 5 || getTotalFileSize(selectedFiles) >= MAX_FILE_SIZE_BYTES}
               sx={{
                 width: 46,
