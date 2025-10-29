@@ -17,6 +17,8 @@ export function ChatPage() {
 
   useEffect(() => {
     const tg = (window as any).Telegram?.WebApp;
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    
     if (!tg) {
       // Fallback для разработки вне Telegram
       document.documentElement.style.setProperty('--tg-viewport-height', `${window.innerHeight}px`);
@@ -32,11 +34,41 @@ export function ChatPage() {
       document.documentElement.style.setProperty('--tg-viewport-height', `${height}px`);
     };
 
+    // Для Android добавляем обработку visualViewport
+    const handleVisualViewportResize = () => {
+      if (window.visualViewport) {
+        const height = window.visualViewport.height;
+        document.documentElement.style.setProperty('--tg-viewport-height', `${height}px`);
+      } else {
+        updateViewportHeight();
+      }
+    };
+
+    // Основной обработчик от Telegram
     tg.onEvent('viewportChanged', updateViewportHeight);
+    
+    // Дополнительные обработчики для Android
+    if (isAndroid) {
+      window.addEventListener('resize', updateViewportHeight);
+      
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', handleVisualViewportResize);
+      }
+    }
+
+    // Начальная установка
     updateViewportHeight();
 
     return () => {
       tg.offEvent('viewportChanged', updateViewportHeight);
+      
+      if (isAndroid) {
+        window.removeEventListener('resize', updateViewportHeight);
+        
+        if (window.visualViewport) {
+          window.visualViewport.removeEventListener('resize', handleVisualViewportResize);
+        }
+      }
     };
   }, []);
 

@@ -66,30 +66,80 @@ export function MessageInput() {
   const renameChatMutation = useRenameChat();
 
   useEffect(() => {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    
     // Функция для предотвращения нативного скролла
-    const handleFocus = () => {
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-      }, 0);
+    const preventScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
     };
 
-    // Интервал для постоянного контроля скролла (как на скриншоте)
+    // Интервал для постоянного контроля скролла
     const interval = setInterval(() => {
-      handleFocus();
+      preventScroll();
     }, 100);
 
-    // Обработчик resize для дополнительного контроля
+    // Обработчик resize
     const handleResize = () => {
-      setTimeout(() => {
-        handleFocus();
-      }, 0);
+      preventScroll();
+    };
+
+    // Специальная обработка для Android с visualViewport
+    const handleVisualViewportResize = () => {
+      if (window.visualViewport) {
+        preventScroll();
+        
+        // Дополнительная проверка через requestAnimationFrame для Android
+        if (isAndroid) {
+          requestAnimationFrame(() => {
+            preventScroll();
+          });
+        }
+      }
+    };
+
+    // Обработчики focusin/focusout для инпута (важно для Android)
+    const handleFocusIn = () => {
+      preventScroll();
+      // Повторяем несколько раз для Android
+      if (isAndroid) {
+        setTimeout(preventScroll, 50);
+        setTimeout(preventScroll, 100);
+        setTimeout(preventScroll, 200);
+      }
+    };
+
+    const handleFocusOut = () => {
+      preventScroll();
     };
 
     window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', preventScroll, { passive: false });
+    document.addEventListener('scroll', preventScroll, { passive: false });
+    
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleVisualViewportResize);
+      window.visualViewport.addEventListener('scroll', preventScroll);
+    }
+
+    // Слушаем события фокуса на инпуте
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', preventScroll);
+      document.removeEventListener('scroll', preventScroll);
+      
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleVisualViewportResize);
+        window.visualViewport.removeEventListener('scroll', preventScroll);
+      }
+      
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
     };
   }, []);
   
