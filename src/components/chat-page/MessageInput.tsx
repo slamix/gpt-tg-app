@@ -67,8 +67,54 @@ export function MessageInput() {
   const renameChatMutation = useRenameChat();
 
   useEffect(() => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const userAgent = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+    const isAndroid = /Android/i.test(userAgent);
+    const isMobile = isIOS || isAndroid;
+    
     if (!isMobile) return;
+
+    if (isIOS) {
+      const handleFocusIn = (e: FocusEvent) => {
+        const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLElement;
+        
+        if (
+          ((target && /input|textarea/i.test(target.tagName)) ||
+            target.contentEditable === 'true') &&
+          !target.dataset.hack
+        ) {
+          target.dataset.hack = '1';
+          const originalGetBoundingClientRect = target.getBoundingClientRect;
+          
+          target.getBoundingClientRect = function() {
+            const result = originalGetBoundingClientRect.call(target);
+            
+            if (document.activeElement === target) {
+              return {
+                ...result,
+                top: 0,
+                bottom: result.bottom,
+                height: result.height,
+                width: result.width,
+                left: result.left,
+                right: result.right,
+                x: result.x,
+                y: 0,
+                toJSON: result.toJSON,
+              } as DOMRect;
+            }
+            
+            return result;
+          };
+        }
+      };
+
+      document.addEventListener('focusin', handleFocusIn);
+      
+      return () => {
+        document.removeEventListener('focusin', handleFocusIn);
+      };
+    }
 
     const handleResize = () => {
       if (window.visualViewport) {
