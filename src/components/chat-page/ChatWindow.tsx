@@ -251,12 +251,13 @@ export function ChatWindow({ onScrollDirectionChange }: ChatWindowProps) {
     <>
       <Box
         ref={containerRef}
+        className="chat__body"
         sx={{
           flex: 1,
           overflow: 'auto',
           p: 1,
           pt: '70px',
-          pb: '140px',
+          pb: '120px',
           backgroundColor: 'background.default',
           scrollBehavior: 'smooth',
           position: 'relative',

@@ -50,7 +50,6 @@ export function MessageInput() {
     mode: 'onChange',
   });
   const [selectedFiles, setSelectedFiles] = useState<FileWithStatus[]>([]);
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const textFieldRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useDispatch();
@@ -67,28 +66,30 @@ export function MessageInput() {
   const renameChatMutation = useRenameChat();
 
   useEffect(() => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (!isMobile) return;
-
-    const handleResize = () => {
-      if (window.visualViewport) {
-        const viewportHeight = window.visualViewport.height;
-        const windowHeight = window.innerHeight;
-        const offset = windowHeight - viewportHeight;
-        setKeyboardOffset(offset > 0 ? offset : 0);
-      }
+    // Функция для предотвращения нативного скролла
+    const handleFocus = () => {
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }, 0);
     };
 
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', handleResize);
-      window.visualViewport.addEventListener('scroll', handleResize);
-    }
+    // Интервал для постоянного контроля скролла (как на скриншоте)
+    const interval = setInterval(() => {
+      handleFocus();
+    }, 100);
+
+    // Обработчик resize для дополнительного контроля
+    const handleResize = () => {
+      setTimeout(() => {
+        handleFocus();
+      }, 0);
+    };
+
+    window.addEventListener('resize', handleResize);
 
     return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', handleResize);
-        window.visualViewport.removeEventListener('scroll', handleResize);
-      }
+      clearInterval(interval);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
   
@@ -325,15 +326,14 @@ export function MessageInput() {
 
   return (
     <Box
+      className="chat__footer"
       sx={{
-        position: 'fixed',
-        bottom: 0,
+        position: 'absolute',
+        bottom: '-24px',
         left: 0,
         right: 0,
         zIndex: 10,
         pointerEvents: 'none',
-        transform: keyboardOffset > 0 ? `translateY(-${keyboardOffset}px)` : 'none',
-        transition: 'transform 0.3s ease-out',
         '& > *': {
           pointerEvents: 'auto',
         },

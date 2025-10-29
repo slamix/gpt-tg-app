@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   ThemeProvider,
@@ -14,6 +14,31 @@ export function ChatPage() {
   
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showChatTitle, setShowChatTitle] = useState(true);
+
+  useEffect(() => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (!tg) {
+      // Fallback для разработки вне Telegram
+      document.documentElement.style.setProperty('--tg-viewport-height', `${window.innerHeight}px`);
+      return;
+    }
+
+    tg.ready();
+    tg.expand();
+
+    // Устанавливаем CSS переменную --tg-viewport-height
+    const updateViewportHeight = () => {
+      const height = tg.viewportHeight || window.innerHeight;
+      document.documentElement.style.setProperty('--tg-viewport-height', `${height}px`);
+    };
+
+    tg.onEvent('viewportChanged', updateViewportHeight);
+    updateViewportHeight();
+
+    return () => {
+      tg.offEvent('viewportChanged', updateViewportHeight);
+    };
+  }, []);
 
   const handleMobileToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -55,11 +80,27 @@ export function ChatPage() {
             showChatTitle={showChatTitle}
           />
           
-          {/* Окно чата занимает всю область */}
-          <ChatWindow onScrollDirectionChange={handleScrollDirectionChange} />
-          
-          {/* Форма ввода зафиксирована внизу поверх чата */}
-          <MessageInput />
+          {/* Контейнер для чата (ChatWindow + MessageInput) */}
+          <Box
+            className="chat"
+            sx={{
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: { xs: 0, md: '280px' },
+              height: 'var(--tg-viewport-height, 100dvh)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Окно чата */}
+            <ChatWindow onScrollDirectionChange={handleScrollDirectionChange} />
+            
+            {/* Форма ввода - position: absolute внутри .chat */}
+            <MessageInput />
+          </Box>
         </Box>
       </Box>
     </ThemeProvider>
