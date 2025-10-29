@@ -511,7 +511,7 @@ export function MessageInput() {
           <Box sx={{ position: 'relative' }}>
             <IconButton
               onMouseDown={(e) => {
-                e.preventDefault(); // Предотвращаем blur инпута
+                e.preventDefault();
                 handleAddFileClick();
               }}
               disabled={selectedFiles.length >= 5 || getTotalFileSize(selectedFiles) >= MAX_FILE_SIZE_BYTES}
