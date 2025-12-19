@@ -6,7 +6,7 @@ import { RootState } from "@/slices";
 import { initAuth } from "@/slices/thunks/authThunks";
 import { setToken } from "@/slices/authSlice";
 import { init } from "@/init";
-import { retrieveRawInitData } from "@telegram-apps/sdk";
+import { retrieveLaunchParams } from "@telegram-apps/sdk";
 import { routes } from "@/navigation/routes";
 import { ModalRemove } from "@/components/modals/ModalRemove";
 import { ModalRename } from "@/components/modals/ModalRename";
@@ -49,9 +49,9 @@ export function App() {
           return;
         }
         
-        const initData = retrieveRawInitData();        
-        if (initData) {
-          dispatch(initAuth(initData) as any);
+        const { initDataRaw } = retrieveLaunchParams();        
+        if (initDataRaw) {
+          dispatch(initAuth(initDataRaw) as any);
         } else {
         }
         setIsCheckingAuth(false);

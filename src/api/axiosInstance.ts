@@ -3,7 +3,7 @@ import { getToken, setToken, removeToken } from "@/utils/tokenStorage";
 import { refreshToken, authorize } from "./authApi";
 import { store } from "@/slices";
 import { setToken as setReduxToken } from "@/slices/authSlice";
-import { retrieveRawInitData } from "@telegram-apps/sdk";
+import { retrieveLaunchParams } from "@telegram-apps/sdk";
 
 export const api = axios.create({
   baseURL: `${import.meta.env.VITE_API_HOST}`,
@@ -75,9 +75,9 @@ api.interceptors.response.use(
         } else {
           await removeToken();
           
-          const initData = retrieveRawInitData();
-          if (initData) {
-            const freshToken = await authorize(initData);
+          const { initDataRaw } = retrieveLaunchParams();
+          if (initDataRaw) {
+            const freshToken = await authorize(initDataRaw);
             
             if (freshToken) {
               store.dispatch(setReduxToken(freshToken));
@@ -98,9 +98,9 @@ api.interceptors.response.use(
         try {
           await removeToken();
           
-          const initData = retrieveRawInitData();
-          if (initData) {
-            const freshToken = await authorize(initData);
+          const { initDataRaw } = retrieveLaunchParams();
+          if (initDataRaw) {
+            const freshToken = await authorize(initDataRaw);
             
             if (freshToken) {
               store.dispatch(setReduxToken(freshToken));
