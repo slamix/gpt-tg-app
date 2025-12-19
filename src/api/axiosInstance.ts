@@ -79,12 +79,57 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Проверяем, является ли это Network Error (CORS или нет сети)
+    const isNetworkError = error.message === 'Network Error' && !error.response;
+    
     logger.log('[axiosInstance] Проверка условий для retry:', {
       status: error.response?.status,
       is401: error.response?.status === 401,
+      isNetworkError,
       alreadyRetried: originalRequest._retry,
       shouldRetry: error.response?.status === 401 && !originalRequest._retry
     });
+
+    // Network Error может быть из-за невалидного токена или CORS
+    if (isNetworkError && !originalRequest._retry) {
+      logger.warn('[axiosInstance] ⚠️ Network Error обнаружен, возможно проблема с CORS или токеном');
+      logger.log('[axiosInstance] Пробуем обновить токен на случай, если он невалидный...');
+      
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Удаляем старый токен и пробуем авторизоваться заново
+        await removeToken();
+        
+        const initDataRaw = getInitDataRaw();
+        logger.log('[axiosInstance] Init data для повторной авторизации (Network Error):', {
+          hasInitData: !!initDataRaw,
+          initDataLength: initDataRaw?.length || 0
+        });
+        
+        if (initDataRaw) {
+          logger.log('[axiosInstance] Отправляем запрос на авторизацию с init data...');
+          const freshToken = await authorize(initDataRaw);
+          
+          if (freshToken) {
+            logger.log('[axiosInstance] ✅ Получен новый токен, повторяем запрос');
+            store.dispatch(setReduxToken(freshToken));
+            originalRequest.headers.Authorization = `Bearer ${freshToken}`;
+            isRefreshing = false;
+            return api(originalRequest);
+          }
+        }
+        
+        logger.error('[axiosInstance] ❌ Не удалось получить токен после Network Error');
+        isRefreshing = false;
+        return Promise.reject(error);
+      } catch (reAuthErr) {
+        logger.error('[axiosInstance] ❌ Ошибка при повторной авторизации после Network Error:', reAuthErr);
+        isRefreshing = false;
+        return Promise.reject(error);
+      }
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       logger.log('[axiosInstance] 🔄 Получен 401, начинаем процесс обновления токена...');
