@@ -15,28 +15,21 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setToken(state, action: PayloadAction<string | null>) {
-      logger.log('[authSlice] setToken вызван:', {
-        hasToken: !!action.payload,
-        tokenLength: action.payload?.length || 0,
-        tokenPreview: action.payload ? action.payload.substring(0, 20) + '...' : 'N/A'
-      });
+      logger.log('[DEBUG] Token set in Redux');
       state.token = action.payload;
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(initAuth.pending, () => {
-        logger.log('[authSlice] initAuth.pending - авторизация в процессе...');
+        logger.log('[DEBUG] Auth pending');
       })
       .addCase(initAuth.fulfilled, (state, action) => {
-        logger.log('[authSlice] initAuth.fulfilled - авторизация успешна:', {
-          hasToken: !!action.payload,
-          tokenLength: action.payload?.length || 0
-        });
+        logger.log('[DEBUG] Auth successful');
         state.token = action.payload;
       })
       .addCase(initAuth.rejected, (_state, action) => {
-        logger.error('[authSlice] initAuth.rejected - авторизация провалилась:', action.error);
+        logger.error('[DEBUG] Auth failed:', action.error);
       });
   },
 });
