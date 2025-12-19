@@ -7,7 +7,7 @@ import { retrieveLaunchParams } from "@telegram-apps/sdk";
 export function getInitDataRaw(): string | undefined {
   try {
     const { initDataRaw } = retrieveLaunchParams();
-    return initDataRaw;
+    return initDataRaw as string | undefined;
   } catch (error) {
     console.error('Ошибка при получении init data:', error);
     return undefined;

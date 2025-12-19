@@ -6,7 +6,7 @@ import { RootState } from "@/slices";
 import { initAuth } from "@/slices/thunks/authThunks";
 import { setToken } from "@/slices/authSlice";
 import { init } from "@/init";
-import { retrieveLaunchParams } from "@telegram-apps/sdk";
+import { getInitDataRaw } from "@/utils/initData";
 import { routes } from "@/navigation/routes";
 import { ModalRemove } from "@/components/modals/ModalRemove";
 import { ModalRename } from "@/components/modals/ModalRename";
@@ -49,7 +49,7 @@ export function App() {
           return;
         }
         
-        const { initDataRaw } = retrieveLaunchParams();        
+        const initDataRaw = getInitDataRaw();        
         if (initDataRaw) {
           dispatch(initAuth(initDataRaw) as any);
         } else {
