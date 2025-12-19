@@ -67,9 +67,13 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     logger.error('[axiosInstance] ❌ Ошибка запроса:', {
       status: error.response?.status,
+      statusText: error.response?.statusText,
       url: error.config?.url,
       method: error.config?.method,
-      message: error.message
+      message: error.message,
+      hasResponse: !!error.response,
+      responseData: error.response?.data,
+      code: error.code
     });
     
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
