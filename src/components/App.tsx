@@ -11,6 +11,7 @@ import { routes } from "@/navigation/routes";
 import { ModalRemove } from "@/components/modals/ModalRemove";
 import { ModalRename } from "@/components/modals/ModalRename";
 import { getToken } from "@/utils/tokenStorage";
+import { logger } from "@/utils/logger";
 
 const queryClient = new QueryClient();
 
@@ -40,22 +41,40 @@ export function App() {
     if (!isInitialized) return;
 
     const checkAuthAndInit = async () => {
+      logger.log('[App] Начало проверки авторизации...');
+      
       try {
         const storedToken = await getToken();
+        logger.log('[App] Проверка сохраненного токена:', {
+          hasToken: !!storedToken,
+          tokenLength: storedToken?.length || 0
+        });
         
         if (storedToken) {
+          logger.log('[App] ✅ Найден сохраненный токен, используем его');
           dispatch(setToken(storedToken));
           setIsCheckingAuth(false);
           return;
         }
         
-        const initDataRaw = getInitDataRaw();        
+        logger.log('[App] Сохраненный токен не найден, получаем init data...');
+        const initDataRaw = getInitDataRaw();
+        
+        logger.log('[App] Результат получения init data:', {
+          hasInitData: !!initDataRaw,
+          initDataLength: initDataRaw?.length || 0
+        });
+        
         if (initDataRaw) {
+          logger.log('[App] ✅ Init data получен, отправляем запрос на авторизацию...');
           dispatch(initAuth(initDataRaw) as any);
         } else {
+          logger.warn('[App] ⚠️ Init data не получен, авторизация невозможна');
         }
         setIsCheckingAuth(false);
       } catch (err: any) {
+        logger.error('[App] ❌ Ошибка при проверке авторизации:', err);
+        logger.error('[App] Stack trace:', err.stack);
         setIsCheckingAuth(false);
       }
     };

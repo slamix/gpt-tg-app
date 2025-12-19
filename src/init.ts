@@ -13,6 +13,7 @@ import {
   miniApp,
   viewport,
 } from '@telegram-apps/sdk-react';
+import { logger } from './utils/logger';
 
 let isInitialized = false;
 
@@ -21,13 +22,34 @@ export async function init(options: {
   eruda: boolean;
   mockForMacOS: boolean;
 }): Promise<void> {
+  logger.log('[init] Начало инициализации SDK...');
+  logger.log('[init] Опции:', options);
+  
   if (isInitialized) {
+    logger.log('[init] SDK уже инициализирован');
     return;
   }
   
   // Set @telegram-apps/sdk-react debug mode and initialize it.
   setDebug(options.debug);
+  logger.log('[init] Инициализация SDK...');
   initSDK();
+  
+  try {
+    const launchParams = retrieveLaunchParams();
+    const initDataRaw = launchParams.initDataRaw as string | undefined;
+    
+    logger.log('[init] Launch параметры:', {
+      platform: launchParams.tgWebAppPlatform,
+      version: launchParams.tgWebAppVersion,
+      hasInitDataRaw: !!initDataRaw,
+      initDataRawLength: initDataRaw?.length || 0,
+      hasInitData: !!launchParams.initData,
+      allKeys: Object.keys(launchParams)
+    });
+  } catch (error) {
+    logger.error('[init] ❌ Ошибка при получении launch параметров:', error);
+  }
 
   // Add Eruda if needed.
   options.eruda && void import('eruda').then(({ default: eruda }) => {
@@ -81,8 +103,10 @@ export async function init(options: {
         viewport.expand();
       }
     } catch (err) {
+      logger.error('[init] Ошибка при настройке viewport:', err);
     }
   });
 
   isInitialized = true;
+  logger.log('[init] ✅ SDK успешно инициализирован');
 }

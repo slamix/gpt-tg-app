@@ -4,6 +4,7 @@ import { refreshToken, authorize } from "./authApi";
 import { store } from "@/slices";
 import { setToken as setReduxToken } from "@/slices/authSlice";
 import { getInitDataRaw } from "@/utils/initData";
+import { logger } from "@/utils/logger";
 
 export const api = axios.create({
   baseURL: `${import.meta.env.VITE_API_HOST}`,
@@ -73,13 +74,26 @@ api.interceptors.response.use(
           isRefreshing = false;
           return api(originalRequest);
         } else {
+          logger.log('[axiosInstance] Refresh token не вернул новый токен, пробуем авторизацию через init data...');
           await removeToken();
           
           const initDataRaw = getInitDataRaw();
+          logger.log('[axiosInstance] Init data для повторной авторизации:', {
+            hasInitData: !!initDataRaw,
+            initDataLength: initDataRaw?.length || 0
+          });
+          
           if (initDataRaw) {
+            logger.log('[axiosInstance] Отправляем запрос на авторизацию с init data...');
             const freshToken = await authorize(initDataRaw);
             
+            logger.log('[axiosInstance] Результат авторизации:', {
+              hasToken: !!freshToken,
+              tokenLength: freshToken?.length || 0
+            });
+            
             if (freshToken) {
+              logger.log('[axiosInstance] ✅ Получен новый токен через init data');
               store.dispatch(setReduxToken(freshToken));
               originalRequest.headers.Authorization = `Bearer ${freshToken}`;
               processQueue(null, freshToken);
@@ -88,21 +102,36 @@ api.interceptors.response.use(
             }
           }
           
+          logger.error('[axiosInstance] ❌ Не удалось получить токен, сессия истекла');
           store.dispatch(setReduxToken(null));
           processQueue(new Error('Сессия истекла'), null);
           isRefreshing = false;
           return Promise.reject(new Error('Сессия истекла'));
         }
       } catch (err) {
+        logger.error('[axiosInstance] ❌ Ошибка при обновлении токена:', err);
         
         try {
+          logger.log('[axiosInstance] Попытка повторной авторизации через init data после ошибки...');
           await removeToken();
           
           const initDataRaw = getInitDataRaw();
+          logger.log('[axiosInstance] Init data для повторной авторизации (catch):', {
+            hasInitData: !!initDataRaw,
+            initDataLength: initDataRaw?.length || 0
+          });
+          
           if (initDataRaw) {
+            logger.log('[axiosInstance] Отправляем запрос на авторизацию с init data (catch)...');
             const freshToken = await authorize(initDataRaw);
             
+            logger.log('[axiosInstance] Результат авторизации (catch):', {
+              hasToken: !!freshToken,
+              tokenLength: freshToken?.length || 0
+            });
+            
             if (freshToken) {
+              logger.log('[axiosInstance] ✅ Получен новый токен через init data (catch)');
               store.dispatch(setReduxToken(freshToken));
               originalRequest.headers.Authorization = `Bearer ${freshToken}`;
               processQueue(null, freshToken);
@@ -111,8 +140,10 @@ api.interceptors.response.use(
             }
           }
         } catch (reAuthErr) {
+          logger.error('[axiosInstance] ❌ Ошибка при повторной авторизации:', reAuthErr);
         }
         
+        logger.error('[axiosInstance] ❌ Все попытки авторизации провалились');
         store.dispatch(setReduxToken(null));
         processQueue(err as Error, null);
         isRefreshing = false;
