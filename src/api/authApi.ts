@@ -4,11 +4,64 @@ import { logger } from "../utils/logger";
 
 const API_URL = import.meta.env.VITE_API_HOST;
 
+// Создаем отдельный инстанс для авторизации БЕЗ interceptor'ов
+// чтобы избежать циклических зависимостей
 const authAxios = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  headers: { "Content-Type": "application/json" },
+  headers: { 
+    "Content-Type": "application/json",
+  },
+  // Важно: добавляем timeout
+  timeout: 30000,
 });
+
+// Добавляем логирование для отладки
+authAxios.interceptors.request.use(
+  (config) => {
+    logger.log('[authAxios] 📤 Исходящий запрос:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      withCredentials: config.withCredentials,
+      headers: config.headers,
+      hasData: !!config.data
+    });
+    return config;
+  },
+  (error) => {
+    logger.error('[authAxios] ❌ Ошибка перед отправкой:', error);
+    return Promise.reject(error);
+  }
+);
+
+authAxios.interceptors.response.use(
+  (response) => {
+    logger.log('[authAxios] ✅ Ответ получен:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+      hasData: !!response.data
+    });
+    return response;
+  },
+  (error) => {
+    logger.error('[authAxios] ❌ Ошибка ответа:', {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      responseData: error.response?.data,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        baseURL: error.config?.baseURL
+      }
+    });
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Авторизация через Telegram init data
@@ -34,6 +87,14 @@ export async function authorize(initData: string): Promise<string> {
   try {
     let response;
     
+    logger.log('[authApi] Подготовка запроса:', {
+      baseURL: authAxios.defaults.baseURL,
+      url: 'auth/telegram',
+      fullURL: `${authAxios.defaults.baseURL}auth/telegram`,
+      withCredentials: authAxios.defaults.withCredentials,
+      headers: authAxios.defaults.headers
+    });
+    
     if (USE_HEADER_AUTH) {
       // Метод 1: Отправка в заголовке (рекомендация Telegram Mini Apps)
       logger.log('[authApi] Отправка init data в заголовке Authorization...');
@@ -45,6 +106,11 @@ export async function authorize(initData: string): Promise<string> {
     } else {
       // Метод 2: Отправка в теле запроса (текущий метод)
       logger.log('[authApi] Отправка init data в теле запроса...');
+      logger.log('[authApi] Payload:', {
+        hasInitData: !!initData,
+        initDataLength: initData.length
+      });
+      
       response = await authAxios.post('auth/telegram', { initData });
     }
     
