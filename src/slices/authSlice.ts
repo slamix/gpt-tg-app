@@ -25,7 +25,7 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(initAuth.pending, (state) => {
+      .addCase(initAuth.pending, () => {
         logger.log('[authSlice] initAuth.pending - авторизация в процессе...');
       })
       .addCase(initAuth.fulfilled, (state, action) => {
@@ -35,7 +35,7 @@ const authSlice = createSlice({
         });
         state.token = action.payload;
       })
-      .addCase(initAuth.rejected, (state, action) => {
+      .addCase(initAuth.rejected, (_state, action) => {
         logger.error('[authSlice] initAuth.rejected - авторизация провалилась:', action.error);
       });
   },
