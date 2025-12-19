@@ -15,12 +15,27 @@ export const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     const token = await getToken();
+    logger.log('[axiosInstance] 📤 Исходящий запрос:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      hasToken: !!token,
+      tokenPreview: token ? token.substring(0, 20) + '...' : 'N/A'
+    });
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      logger.log('[axiosInstance] ✅ Токен добавлен в заголовок Authorization');
+    } else {
+      logger.warn('[axiosInstance] ⚠️ Токен отсутствует, запрос без авторизации');
     }
+    
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    logger.error('[axiosInstance] ❌ Ошибка перед отправкой запроса:', error);
+    return Promise.reject(error);
+  }
 );
 
 let isRefreshing = false;
@@ -41,11 +56,38 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 };
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    logger.log('[axiosInstance] ✅ Успешный ответ:', {
+      status: response.status,
+      url: response.config.url,
+      method: response.config.method
+    });
+    return response;
+  },
   async (error: AxiosError) => {
+    logger.error('[axiosInstance] ❌ Ошибка запроса:', {
+      status: error.response?.status,
+      url: error.config?.url,
+      method: error.config?.method,
+      message: error.message
+    });
+    
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    if (!originalRequest) {
+      logger.error('[axiosInstance] ❌ originalRequest отсутствует!');
+      return Promise.reject(error);
+    }
+
+    logger.log('[axiosInstance] Проверка условий для retry:', {
+      status: error.response?.status,
+      is401: error.response?.status === 401,
+      alreadyRetried: originalRequest._retry,
+      shouldRetry: error.response?.status === 401 && !originalRequest._retry
+    });
+
     if (error.response?.status === 401 && !originalRequest._retry) {
+      logger.log('[axiosInstance] 🔄 Получен 401, начинаем процесс обновления токена...');
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

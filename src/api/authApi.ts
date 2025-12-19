@@ -10,9 +10,21 @@ const authAxios = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+/**
+ * Авторизация через Telegram init data
+ * 
+ * Поддерживает два метода отправки:
+ * 1. В теле запроса (по умолчанию) - для совместимости с текущим API
+ * 2. В заголовке Authorization - согласно рекомендациям Telegram Mini Apps
+ * 
+ * Для переключения на заголовок установите USE_HEADER_AUTH=true
+ */
+const USE_HEADER_AUTH = import.meta.env.VITE_USE_HEADER_AUTH === 'true';
+
 export async function authorize(initData: string): Promise<string> {
   logger.log('[authApi] Отправка запроса на авторизацию...');
   logger.log('[authApi] API URL:', API_URL);
+  logger.log('[authApi] Метод отправки:', USE_HEADER_AUTH ? 'Authorization header' : 'Request body');
   logger.log('[authApi] Init data:', {
     hasInitData: !!initData,
     initDataLength: initData?.length || 0,
@@ -20,7 +32,24 @@ export async function authorize(initData: string): Promise<string> {
   });
   
   try {
-    const { data } = await authAxios.post('auth/telegram', { initData });
+    let response;
+    
+    if (USE_HEADER_AUTH) {
+      // Метод 1: Отправка в заголовке (рекомендация Telegram Mini Apps)
+      logger.log('[authApi] Отправка init data в заголовке Authorization...');
+      response = await authAxios.post('auth/telegram', {}, {
+        headers: {
+          'Authorization': `tma ${initData}`
+        }
+      });
+    } else {
+      // Метод 2: Отправка в теле запроса (текущий метод)
+      logger.log('[authApi] Отправка init data в теле запроса...');
+      response = await authAxios.post('auth/telegram', { initData });
+    }
+    
+    const { data } = response;
+    
     logger.log('[authApi] Ответ от сервера:', {
       hasData: !!data,
       hasAccessToken: !!data?.access_token,
@@ -46,6 +75,7 @@ export async function authorize(initData: string): Promise<string> {
       status: error.response?.status,
       statusText: error.response?.statusText,
       responseData: error.response?.data,
+      requestMethod: USE_HEADER_AUTH ? 'header' : 'body',
       stack: error.stack
     });
     throw error;

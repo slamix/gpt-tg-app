@@ -23,14 +23,17 @@ export function App() {
 
   useEffect(() => {
     const initializeApp = async () => {
+      logger.log('[App] 🚀 Начало инициализации приложения...');
       try {
         await init({
           debug: true,
           eruda: true,
           mockForMacOS: true,
         });
+        logger.log('[App] ✅ SDK инициализирован успешно');
         setIsInitialized(true);
       } catch (err: any) {
+        logger.error('[App] ❌ Ошибка при инициализации SDK:', err);
         setIsInitialized(true);
       }
     };
@@ -38,20 +41,25 @@ export function App() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized) {
+      logger.log('[App] ⏳ Ожидание инициализации SDK...');
+      return;
+    }
 
     const checkAuthAndInit = async () => {
-      logger.log('[App] Начало проверки авторизации...');
+      logger.log('[App] 🔐 Начало проверки авторизации...');
       
       try {
         const storedToken = await getToken();
         logger.log('[App] Проверка сохраненного токена:', {
           hasToken: !!storedToken,
-          tokenLength: storedToken?.length || 0
+          tokenLength: storedToken?.length || 0,
+          tokenPreview: storedToken ? storedToken.substring(0, 20) + '...' : 'N/A'
         });
         
         if (storedToken) {
           logger.log('[App] ✅ Найден сохраненный токен, используем его');
+          logger.log('[App] 🎉 Авторизация завершена (использован сохраненный токен)');
           dispatch(setToken(storedToken));
           setIsCheckingAuth(false);
           return;
@@ -68,6 +76,7 @@ export function App() {
         if (initDataRaw) {
           logger.log('[App] ✅ Init data получен, отправляем запрос на авторизацию...');
           dispatch(initAuth(initDataRaw) as any);
+          logger.log('[App] 🎉 Авторизация завершена (через init data)');
         } else {
           logger.warn('[App] ⚠️ Init data не получен, авторизация невозможна');
         }
@@ -79,6 +88,7 @@ export function App() {
       }
     };
 
+    logger.log('[App] 🔄 Запуск процесса авторизации...');
     checkAuthAndInit();
   }, [isInitialized, dispatch]);
 
