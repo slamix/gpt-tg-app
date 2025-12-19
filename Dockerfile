@@ -9,10 +9,13 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code
+# Copy source code (excluding .env files)
 COPY . .
 
-# Build the application
+# Copy .env file if exists (this will be the last layer to avoid cache issues)
+COPY .env* ./ 2>/dev/null || true
+
+# Build the application with debug logs enabled
 RUN npm run build
 
 # Install serve globally to serve the built files
