@@ -1,5 +1,4 @@
 import { retrieveLaunchParams } from "@telegram-apps/sdk";
-import { logger } from "./logger";
 
 /**
  * Парсит init data из URL (fallback)
