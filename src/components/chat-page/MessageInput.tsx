@@ -320,6 +320,7 @@ export function MessageInput() {
           attachments: attachments.length !== 0 ? attachments : undefined,
         }
         dispatch(addMessage(sentMessage));
+        dispatch(setChatStatus({ chatId: res.id, isWaitingMsg: true, status: 'polling' }));
         
         const messageId = await askChat({ 
           chatId: res.id, 
@@ -327,7 +328,6 @@ export function MessageInput() {
           attachments: attachments.length !== 0 ? attachments : undefined,
         });
 
-        dispatch(setChatStatus({ chatId: res.id, isWaitingMsg: true, status: 'polling' }));
         dispatch(updateMessageId(messageId.id));
         
         const chatMetaData = await getChatById(res.id);
@@ -354,14 +354,13 @@ export function MessageInput() {
           updated_at: date.toISOString(),
         }
         dispatch(addMessage(sentMessage));
+        dispatch(setChatStatus({ chatId: activeChatId, isWaitingMsg: true, status: 'polling' }));
         
         const messageId = await askChat({ 
           chatId: activeChatId, 
           text: message.trim(),
           attachments: attachments.length !== 0 ? attachments : undefined,
         });
-
-        dispatch(setChatStatus({ chatId: activeChatId, isWaitingMsg: true, status: 'polling' }));
 
         dispatch(updateMessageId(messageId.id));
       }
